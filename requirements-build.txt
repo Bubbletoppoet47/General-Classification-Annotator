@@ -1,0 +1,2 @@
+# Only needed to build the Windows programs yourself (GitHub does this for the releases).
+pyinstaller>=6.9

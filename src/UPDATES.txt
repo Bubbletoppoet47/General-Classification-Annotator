@@ -1,0 +1,60 @@
+TRASH DETECTION ANNOTATOR - UPDATES
+Newest first. Each time the folder is shared again, a new entry goes on top.
+To update: use File > Check for updates in the annotator (after the first time), or copy these files by hand.
+
+IMPORTANT: copy these files INTO your existing annotator folder and choose "replace files".
+Never replace the whole folder - your project (GimbleDataset) lives there.
+
+2026-10-29 - on GitHub, Windows program, update check from GitHub
+- The annotator is now public on GitHub (GPL-3.0): https://github.com/Bubbletoppoet47/General-Classification-Annotator
+- There is a Windows program, so Python is not needed. GeneralClassificationAnnotator-Lite.exe annotates, shares and
+  publishes. GeneralClassificationAnnotator-AI.zip also pre-labels with the AI models (unzip it and run the .exe inside).
+  Both are on the Releases page of the GitHub project.
+- In the Windows program, File > Check for updates asks GitHub for the newest release and opens its download page.
+  Running from the .py files still updates from the Annotator_Share folder, as before.
+- Sharing did not change: same Google Drive folder, same files. Your project, sessions and settings are untouched.
+- Windows may show a blue "Windows protected your PC" box the first time (the program is not code-signed).
+  Choose More info, then Run anyway.
+
+2026-10-08 - class delete fix, update menu
+- Deleting a class no longer freezes or crashes on big projects. It now backs up only the files that change, runs in
+  the background with a percent counter, and shows an error box if something fails.
+- New File > Check for updates and File > Update folder location. Pick the Annotator_Share folder once; after that,
+  Check for updates shows what changed, replaces the program files (old ones kept in _previous), and reopens.
+  Your project, sessions and settings are never touched.
+- The annotator now remembers which project it opened and reopens it. If it can't find a project it asks you,
+  instead of quietly starting an empty one.
+- If a later update changes the packages, it tells you to run: pip install -r requirements.txt
+
+2026-10-08 - first shared copy
+
+What it is
+- The annotator only annotates and publishes. Training (collecting everyone's data, validation sets, the Train window)
+  is a separate program and is not in this folder.
+
+Menus
+- File:   Import Gimble Session, Import Video, Insert Assist Model, Insert Scratch Model, Publish to shared folder,
+          Import data to edit, Shared folder location, Models folder location, Exit.
+- Edit:   Classes, Hotkeys, My name, AI confidence, Toggle theme.
+- Manage: Sessions (with Access to other people's data), Sync Deleted Files.
+- The toolbar keeps the LiDAR dots / pick-distance checkbox, the AI model box and Confirm Image
+  ("Confirm As-Is" is now called "Confirm Image").
+
+Sharing your annotations
+- First time: File > My name (asked once), then File > Shared folder location and pick the shared folder.
+- File > Publish to shared folder copies your annotated images (with boxes, distances and LiDAR depth) into your own
+  folder inside the shared folder. It looks at what is really in your folder and only adds what is missing or changed,
+  so an empty folder gets everything. Nothing is ever deleted from it.
+- Only annotated images are shared. Videos, sessions and unannotated frames stay on your computer.
+- File > Import data to edit lets you bring in someone else's set to fix it. Your fix goes into your own folder and the
+  image keeps the original annotator's name. If two people edit the same image, the newest edit wins automatically.
+- Whether something is for training or validation is chosen in the training program, not here.
+
+AI models
+- File > Models folder location: pick the shared Models folder (it has Assist and Scratch folders inside).
+- File > Insert Assist Model / Insert Scratch Model: the newest version of each size is listed first, older versions in
+  a nested list. Clicking one copies it to your computer, adds it to the AI model box and loads it.
+- Hotkeys can be changed in Edit > Hotkeys.
+
+Setup
+- Install the packages once:  pip install -r requirements.txt

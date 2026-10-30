@@ -1,0 +1,22 @@
+# Your data, models and settings never go in the repository
+Dataset/
+GimbleDataset/
+_previous/
+_class_backups/
+Annotator_Share/
+*.pt
+*.pth
+.trash_annotator.json
+hotkeys.json
+manifest.json
+
+# Python / build output
+__pycache__/
+*.pyc
+*.update
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+selftest*.txt

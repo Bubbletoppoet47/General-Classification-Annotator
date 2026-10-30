@@ -1,0 +1,5 @@
+# Packages for the Lite program (no AI). Used to run from source without the AI parts, and by the Lite build.
+pillow>=10.0
+numpy>=1.24
+opencv-python-headless>=4.8
+sv-ttk>=2.5

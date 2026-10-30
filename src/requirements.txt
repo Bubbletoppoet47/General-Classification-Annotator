@@ -1,0 +1,15 @@
+# Trash Detection Annotator - install everything in one go:
+#     pip install -r requirements.txt
+# Then start it with:   python annotator_gui.py "path\to\your\project folder"
+# (Python 3.10 or newer; Tkinter comes with the normal Windows Python installer.)
+
+pillow>=10.0
+numpy>=1.24
+opencv-python>=4.8        # File > Import Video, and the AI models
+sv-ttk>=2.5               # optional: the dark/light theme (the program still runs without it)
+
+# AI features (the AI model box and File > Insert Assist / Scratch Model):
+torch>=2.2                # plain "pip install" gives the CPU build on Windows, which is fine for annotating.
+                          # For an NVIDIA GPU, install torch first from https://pytorch.org/get-started/locally/
+                          # (pick your CUDA version), then run this file.
+ultralytics>=8.4.0        # needs a recent version for the YOLO26 models
