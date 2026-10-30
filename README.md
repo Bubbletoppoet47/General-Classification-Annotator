@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.png" width="128" alt="General Classification Annotator logo"></p>
+
 # General Classification Annotator
 
 A desktop tool for annotating photos for object detection. It imports sessions from the Gimble rig (a LiDAR plus a

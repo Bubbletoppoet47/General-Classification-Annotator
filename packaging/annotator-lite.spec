@@ -12,7 +12,7 @@ ICON = os.path.join(ROOT, "assets", "icon.ico")          # used automatically wh
 a = Analysis(
     [os.path.join(SRC, "annotator_gui.py")],
     pathex=[SRC],
-    datas=collect_data_files("sv_ttk"),                   # the dark/light theme files
+    datas=collect_data_files("sv_ttk") + [(os.path.join(ROOT, "assets", "icon_256.png"), "assets")],                   # the dark/light theme files
     hiddenimports=["annotator_core", "app_update", "hotkeys", "share_zip", "model_library", "model_registry",
                    "model_assist", "gimble_assist", "gimble_data", "gimble_model"],
     excludes=["torch", "torchvision", "torchaudio", "ultralytics", "matplotlib", "pandas", "scipy",

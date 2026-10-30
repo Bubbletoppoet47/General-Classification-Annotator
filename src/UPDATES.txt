@@ -5,6 +5,9 @@ To update: use File > Check for updates in the annotator (after the first time),
 IMPORTANT: copy these files INTO your existing annotator folder and choose "replace files".
 Never replace the whole folder - your project (GimbleDataset) lives there.
 
+2026-10-29 - new app icon and logo (version 1.0.1)
+- The program has a logo now: three sorted boxes labeled G, C and A. The Windows .exe and the program window use it.
+
 2026-10-29 - on GitHub, Windows program, update check from GitHub
 - The annotator is now public on GitHub (GPL-3.0): https://github.com/Bubbletoppoet47/General-Classification-Annotator
 - There is a Windows program, so Python is not needed. GeneralClassificationAnnotator-Lite.exe annotates, shares and

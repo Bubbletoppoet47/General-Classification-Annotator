@@ -40,7 +40,7 @@ import time
 from tkinter import (
     Tk, Toplevel, Canvas, Listbox, StringVar, BooleanVar,
     filedialog, messagebox, simpledialog, SINGLE, END, BOTH, LEFT, RIGHT,
-    TOP, BOTTOM, X, Y, NW, Menu,
+    TOP, BOTTOM, X, Y, NW, Menu, PhotoImage,
 )
 from tkinter import ttk
 from tkinter.ttk import Treeview
@@ -183,8 +183,21 @@ class AnnotatorApp:
     # UI construction
     # ------------------------------------------------------------------
 
+    def _set_window_icon(self):
+        """Use the logo as the window icon. Silently does nothing if the picture is missing."""
+        try:
+            import sys
+            base = getattr(sys, "_MEIPASS", None) or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+            path = os.path.join(base, "assets", "icon_256.png")
+            if os.path.exists(path):
+                self._icon_img = PhotoImage(file=path)
+                self.root.iconphoto(True, self._icon_img)
+        except Exception:
+            pass
+
     def _build_ui(self):
         self.root.title("Trash Detection Annotator")
+        self._set_window_icon()
         self.root.geometry("1280x820")
         self.root.minsize(900, 600)
 

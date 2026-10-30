@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 - 2026-10-29
+
+- New logo and app icon (sorted G, C, A boxes). Used by the Windows programs and the program window.
+
 ## 1.0.0 - 2026-10-29
 
 - First public release on GitHub (GPL-3.0).

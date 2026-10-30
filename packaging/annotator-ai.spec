@@ -14,7 +14,7 @@ a = Analysis(
     [os.path.join(SRC, "annotator_gui.py")],
     pathex=[SRC],
     binaries=ul_bins,
-    datas=collect_data_files("sv_ttk") + ul_datas,
+    datas=collect_data_files("sv_ttk") + ul_datas + [(os.path.join(ROOT, "assets", "icon_256.png"), "assets")],
     hiddenimports=ul_hidden + ["annotator_core", "app_update", "hotkeys", "share_zip", "model_library",
                                "model_registry", "model_assist", "gimble_assist", "gimble_data", "gimble_model"],
     excludes=["IPython", "pytest", "tensorboard"],
