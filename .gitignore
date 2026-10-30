@@ -20,3 +20,6 @@ dist/
 .venv/
 venv/
 selftest*.txt
+
+# ...except the ready-made models that the annotator downloads from GitHub
+!models/*.pt
