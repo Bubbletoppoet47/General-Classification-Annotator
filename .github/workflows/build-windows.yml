@@ -1,8 +1,8 @@
 name: Build Windows programs
 
 # Run it by hand: Actions tab > "Build Windows programs" > Run workflow.
-#   publish unticked = just build both programs and keep them as downloadable build artifacts (a dry run).
-#   publish ticked   = also make the GitHub release "v<APP_VERSION>" (the number in src/app_update.py) and attach both.
+#   publish unticked = just build the program and keep them as downloadable build artifacts (a dry run).
+#   publish ticked   = also make the GitHub release "v<APP_VERSION>" (the number in src/app_update.py) and attach the zip.
 # Pushing a tag like v1.0.0 does the same as ticking publish (the tag must match APP_VERSION).
 on:
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install -r requirements-lite.txt
+      - run: pip install -r requirements-test.txt
       - name: Run the tests (information only - a failure here is shown but does not stop the build)
         continue-on-error: true
         shell: pwsh
@@ -33,26 +33,7 @@ jobs:
           }
           if ($failed -gt 0) { exit 1 }
 
-  build-lite:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install -r requirements-lite.txt -r requirements-build.txt
-      - run: pyinstaller packaging/annotator-lite.spec --noconfirm
-      - name: Self-test the built program
-        shell: pwsh
-        run: |
-          $p = Start-Process dist/GeneralClassificationAnnotator-Lite.exe -ArgumentList "--selftest","selftest-lite.txt" -Wait -PassThru
-          if (Test-Path selftest-lite.txt) { Get-Content selftest-lite.txt } else { Write-Host "no selftest output" }
-          if ($p.ExitCode -ne 0) { throw "selftest failed (exit $($p.ExitCode))" }
-      - uses: actions/upload-artifact@v4
-        with:
-          name: lite
-          path: dist/GeneralClassificationAnnotator-Lite.exe
-
-  build-ai:
+  build:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,27 +43,27 @@ jobs:
         run: |
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r src/requirements.txt -r requirements-build.txt
-      - run: pyinstaller packaging/annotator-ai.spec --noconfirm
+      - run: pyinstaller packaging/annotator.spec --noconfirm
       - name: Self-test the built program (the AI packages must import)
         shell: pwsh
         run: |
-          $p = Start-Process dist/GeneralClassificationAnnotator-AI/GeneralClassificationAnnotator-AI.exe -ArgumentList "--selftest","selftest-ai.txt","--expect-ai" -Wait -PassThru
-          if (Test-Path selftest-ai.txt) { Get-Content selftest-ai.txt } else { Write-Host "no selftest output" }
+          $p = Start-Process dist/GeneralClassificationAnnotator/GeneralClassificationAnnotator.exe -ArgumentList "--selftest","selftest.txt","--expect-ai" -Wait -PassThru
+          if (Test-Path selftest.txt) { Get-Content selftest.txt } else { Write-Host "no selftest output" }
           if ($p.ExitCode -ne 0) { throw "selftest failed (exit $($p.ExitCode))" }
       - name: Zip the folder (GitHub allows 2000 MB per release file)
         shell: pwsh
         run: |
-          Compress-Archive -Path dist/GeneralClassificationAnnotator-AI -DestinationPath GeneralClassificationAnnotator-AI.zip -CompressionLevel Optimal
-          $mb = [math]::Round((Get-Item GeneralClassificationAnnotator-AI.zip).Length / 1MB)
+          Compress-Archive -Path dist/GeneralClassificationAnnotator -DestinationPath GeneralClassificationAnnotator.zip -CompressionLevel Optimal
+          $mb = [math]::Round((Get-Item GeneralClassificationAnnotator.zip).Length / 1MB)
           Write-Host "zip is $mb MB"
           if ($mb -ge 2000) { throw "the zip is $mb MB - over the 2000 MB GitHub limit for a release file" }
       - uses: actions/upload-artifact@v4
         with:
-          name: ai
-          path: GeneralClassificationAnnotator-AI.zip
+          name: program
+          path: GeneralClassificationAnnotator.zip
 
   publish:
-    needs: [build-lite, build-ai]
+    needs: [build]
     if: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish }}
     runs-on: ubuntu-latest
     permissions:

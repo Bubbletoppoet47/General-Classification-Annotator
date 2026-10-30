@@ -12,9 +12,12 @@ Licensed under GPL-3.0 (see `LICENSE`).
 
 Download from the [Releases page](https://github.com/Bubbletoppoet47/General-Classification-Annotator/releases/latest):
 
-- **GeneralClassificationAnnotator-Lite.exe**: one file. Annotate, import, share and publish. No AI pre-labeling.
-- **GeneralClassificationAnnotator-AI.zip**: everything in Lite plus pre-labeling with the AI models. Unzip it and run
-  the `.exe` inside the folder. It is large because it contains PyTorch.
+- **GeneralClassificationAnnotator.zip**: the program. Unzip it and run `GeneralClassificationAnnotator.exe` inside the
+  folder. It is large (about 280 MB) because it contains PyTorch for the AI pre-labeling.
+
+The ready-made AI models are not inside it. The first time it starts it asks whether you want to download them from
+GitHub (just the newest of each size, or all of them, or none). You can do it later from **File > Download models from
+GitHub**. They are small, a few MB each.
 
 The first time you run it, Windows may show a blue "Windows protected your PC" box, because the program is not
 code-signed. Choose **More info**, then **Run anyway**.
@@ -38,7 +41,7 @@ pip install -r src/requirements.txt        # everything, including the AI parts
 python src/annotator_gui.py
 ```
 
-For a smaller install without the AI parts use `requirements-lite.txt` instead. For an NVIDIA GPU, install PyTorch first
+For an NVIDIA GPU, install PyTorch first
 from https://pytorch.org/get-started/locally/ and then run the line above.
 
 `python src/annotator_gui.py --selftest out.txt` builds the window on a throw-away project, tries the AI imports, writes
@@ -58,16 +61,15 @@ Publishing only copies what is missing or changed and never deletes anything. Do
 to anyone's data; access is whoever the Drive folder is shared with. Set the folder with File > Shared folder location.
 Models live in a Models folder with `Assist` and `Scratch` inside (File > Models folder location).
 
-## Build the Windows programs
+## Build the Windows program
 
-GitHub builds them: Actions tab, **Build Windows programs**, Run workflow. Leave **publish** unticked for a trial build
+GitHub builds it: Actions tab, **Build Windows programs**, Run workflow. Leave **publish** unticked for a trial build
 (files are kept on the run page), tick it to also create the release `v<version>`. The version is `APP_VERSION` in
 `src/app_update.py`; raise it before each release and add a dated entry on top of `src/UPDATES.txt` (its newest entry
 becomes the release notes and the "what's new" text).
 
-To build by hand: `pip install -r requirements-lite.txt -r requirements-build.txt` then
-`pyinstaller packaging/annotator-lite.spec` (or `annotator-ai.spec`, after installing CPU PyTorch and
-`src/requirements.txt`).
+To build by hand: `pip install torch --index-url https://download.pytorch.org/whl/cpu`, then
+`pip install -r src/requirements.txt -r requirements-build.txt` and `pyinstaller packaging/annotator.spec`.
 
 ## Tests
 

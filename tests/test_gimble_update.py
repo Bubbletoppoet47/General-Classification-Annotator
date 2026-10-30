@@ -99,6 +99,7 @@ opened = []
 class FakeApp:
     def __init__(self, root, proj):
         opened.append(proj); self.project = ac.Project(proj, default_classes=["a"])
+    def first_run_models_prompt(self): pass
 ag.AnnotatorApp = FakeApp
 tk.Tk.mainloop = lambda self: None
 ag.__file__ = os.path.join(here2, "annotator_gui.py"); sys.argv = ["x"]

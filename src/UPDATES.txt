@@ -5,6 +5,13 @@ To update: use File > Check for updates in the annotator (after the first time),
 IMPORTANT: copy these files INTO your existing annotator folder and choose "replace files".
 Never replace the whole folder - your project (GimbleDataset) lives there.
 
+2026-10-29 - one program, and ready-made AI models download from GitHub (version 1.0.2)
+- There is now just one Windows download: GeneralClassificationAnnotator.zip (unzip it and run the .exe inside).
+  The separate Lite version is gone.
+- The AI models are no longer part of the download. The first time you start the program it asks whether to download
+  them from GitHub: just the newest of each size, all of them, or none. Later: File > Download models from GitHub.
+  Then File > Insert Assist Model picks one.
+
 2026-10-29 - new app icon and logo (version 1.0.1)
 - The program has a logo now: three sorted boxes labeled G, C and A. The Windows .exe and the program window use it.
 

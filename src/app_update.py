@@ -24,7 +24,7 @@ import time
 import urllib.error
 import urllib.request
 
-APP_VERSION = "1.0.1"          # keep in step with the release tag: the tag is "v" + this number
+APP_VERSION = "1.0.2"          # keep in step with the release tag: the tag is "v" + this number
 GITHUB_REPO = "Bubbletoppoet47/General-Classification-Annotator"
 RELEASES_URL = f"https://github.com/{GITHUB_REPO}/releases/latest"
 

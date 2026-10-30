@@ -1,0 +1,5 @@
+# Packages for running the tests without the big AI packages (used by the GitHub test job).
+pillow>=10.0
+numpy>=1.24
+opencv-python-headless>=4.8
+sv-ttk>=2.5

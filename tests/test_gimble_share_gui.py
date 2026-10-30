@@ -76,7 +76,7 @@ assert [bar.entrycget(i, "label") for i in range(bar.index("end") + 1)] == ["Fil
 def labels(m): return [m.entrycget(i, "label") for i in range(m.index("end") + 1) if m.type(i) != "separator"]
 assert labels(app.file_menu) == ["Import Gimble Session...", "Import Video...", "Insert Assist Model", "Insert Scratch Model",
                                  "Publish to shared folder", "Import data to edit...", "Shared folder location...",
-                                 "Models folder location...", "Check for updates...", "Update folder location...", "Exit"], labels(app.file_menu)
+                                 "Models folder location...", "Download models from GitHub...", "Check for updates...", "Update folder location...", "Exit"], labels(app.file_menu)
 assert labels(app.edit_menu) == ["Classes...", "Hotkeys...", "My name...", "AI confidence...", "Toggle theme"], labels(app.edit_menu)
 assert labels(app.manage_menu) == ["Sessions...", "Sync Deleted Files", "Dataset location..."]
 btn_texts = {b.cget("text") for b in find(root, ttk.Button)}

@@ -51,6 +51,7 @@ from PIL import Image, ImageDraw, ImageTk
 import annotator_core as ac
 import model_registry as mr
 import model_library as ml
+import model_download as md
 import app_update as au
 import hotkeys as hk
 import share_zip as sz
@@ -408,6 +409,7 @@ class AnnotatorApp:
         file_m.add_command(label="Import data to edit...", command=self.import_to_edit)
         file_m.add_command(label="Shared folder location...", command=self.choose_shared_dir)
         file_m.add_command(label="Models folder location...", command=self.choose_models_dir)
+        file_m.add_command(label="Download models from GitHub...", command=self.download_models)
         file_m.add_separator()
         file_m.add_command(label="Check for updates...", command=self.check_for_updates)
         if not au.is_frozen():
@@ -588,6 +590,123 @@ class AnnotatorApp:
         self.cfg['models_dir'] = os.path.normpath(d)
         self._save_cfg()
         return self.cfg['models_dir']
+
+    # ---- ready-made models from GitHub (File > Download models from GitHub, and once on the very first start)
+
+    def _default_models_dir(self):
+        return os.path.join(au.app_dir(__file__), "Models")
+
+    def first_run_models_prompt(self):
+        """Asked once, the first time the program starts on this computer."""
+        if self.cfg.get('models_prompt_done'):
+            return
+        self.cfg['models_prompt_done'] = True
+        self._save_cfg()
+        self.download_models(first_run=True)
+
+    def download_models(self, first_run=False, fetch=None, install=None):
+        """Lists the models on the project's GitHub page and downloads the ones you choose into the Models folder.
+        `fetch` / `install` can be swapped for fakes in tests (they stand for md.list_remote / md.install)."""
+        import threading
+        fetch = fetch or md.list_remote
+        install = install or md.install
+        self.root.config(cursor="watch")
+        self.root.update_idletasks()
+        try:
+            entries = fetch()
+            err = None
+        except (OSError, ValueError) as e:
+            entries, err = [], e
+        finally:
+            self.root.config(cursor="")
+        if err or not entries:
+            msg = ("Couldn't reach the models on GitHub right now. Check your internet, then use File > Download "
+                   "models from GitHub... any time." if err else "There are no models on the GitHub page yet.")
+            messagebox.showinfo("Download models", msg)
+            return None
+        models_dir = self.cfg.get('models_dir') or self._default_models_dir()
+        win = Toplevel(self.root)
+        win.title("Download models")
+        win.transient(self.root)
+        win.resizable(False, False)
+        head = ("Welcome! Do you want to download ready-made AI models? They pre-label your photos so you only fix the "
+                "boxes. They are small and you can do this later from File > Download models from GitHub."
+                if first_run else
+                "Pick which ready-made AI models to download from GitHub.")
+        ttk.Label(win, text=head, wraplength=460, justify=LEFT).pack(padx=14, pady=(14, 8), anchor="w")
+        mode = StringVar(value="newest")
+        newest_n = len(md.pick(entries, "newest"))
+        ttk.Radiobutton(win, variable=mode, value="newest",
+                        text=f"Just the newest of each size ({newest_n} model{'s' if newest_n != 1 else ''})").pack(
+            padx=14, anchor="w")
+        ttk.Radiobutton(win, variable=mode, value="all",
+                        text=f"All of them ({len(entries)} model{'s' if len(entries) != 1 else ''})").pack(padx=14, anchor="w")
+        if first_run:
+            ttk.Radiobutton(win, variable=mode, value="none", text="No thanks, just the annotator").pack(padx=14, anchor="w")
+        box = Listbox(win, height=min(8, len(entries)), width=70, activestyle="none", exportselection=False)
+        for e in entries:
+            box.insert(END, md.describe(e) + ("   (already here)" if md.already_have(models_dir, e) else ""))
+        box.pack(padx=14, pady=8)
+        ttk.Label(win, text=f"They are saved in: {models_dir}", wraplength=460, justify=LEFT).pack(padx=14, anchor="w")
+        status = StringVar(value="")
+        ttk.Label(win, textvariable=status, wraplength=460, justify=LEFT).pack(padx=14, pady=(8, 0), anchor="w")
+        btns = ttk.Frame(win)
+        btns.pack(padx=14, pady=12, anchor="e")
+        state = {"busy": False, "result": None}
+
+        def finish(res):
+            state["busy"] = False
+            state["result"] = res
+            self.cfg['models_dir'] = os.path.normpath(models_dir)
+            self._save_cfg()
+            self._rebuild_model_menus()
+            lines = []
+            if res["installed"]:
+                lines.append(f"Downloaded {len(res['installed'])}: " + ", ".join(res["installed"]))
+            if res["skipped"]:
+                lines.append(f"Already had {len(res['skipped'])}.")
+            for f, m in res["errors"]:
+                lines.append(f"Couldn't get {f}: {m}")
+            lines.append("\nNow use File > Insert Assist Model to pick one.")
+            win.destroy()
+            messagebox.showinfo("Download models", "\n".join(lines))
+
+        def go():
+            if state["busy"]:
+                return
+            if mode.get() == "none":
+                win.destroy()
+                return
+            chosen = md.pick(entries, mode.get())
+            state["busy"] = True
+            go_btn.state(["disabled"])
+            progress = {"text": "Starting...", "result": None}
+
+            def work():
+                def prog(i, n, name, done):
+                    progress["text"] = f"Downloading {i + 1} of {n}: {name} ({done / 1048576:.1f} MB)"
+                try:
+                    progress["result"] = install(models_dir, chosen, prog)
+                except Exception as ex:  # noqa: BLE001
+                    progress["result"] = {"installed": [], "skipped": [], "errors": [("models", str(ex))]}
+
+            threading.Thread(target=work, daemon=True).start()
+
+            def poll():
+                if progress["result"] is not None:
+                    finish(progress["result"])
+                else:
+                    status.set(progress["text"])
+                    win.after(150, poll)
+            poll()
+
+        go_btn = ttk.Button(btns, text="Download", command=go)
+        go_btn.pack(side=RIGHT)
+        ttk.Button(btns, text="Close" if not first_run else "Not now", command=win.destroy).pack(side=RIGHT, padx=8)
+        self._models_dialog = win
+        self._models_dialog_go = go
+        self._models_dialog_mode = mode
+        return win
 
     def _scan_inserted(self):
         """Models inserted in earlier runs are still in INSERTED_DIR - keep them in the toolbar box."""
@@ -2659,9 +2778,9 @@ class AnnotatorApp:
             if au.is_frozen():
                 messagebox.showerror(
                     "AI models not included",
-                    "This is the Lite version of the annotator, which doesn't include the AI parts.\n\n"
-                    "To pre-label with an AI model, download GeneralClassificationAnnotator-AI.zip from the "
-                    f"releases page and use that one instead:\n{au.RELEASES_URL}")
+                    "The AI parts of this copy of the program are missing or couldn't start.\n\n"
+                    "Please download the newest version from the releases page and run that one:\n"
+                    f"{au.RELEASES_URL}")
             else:
                 messagebox.showerror(
                     "Missing package",
@@ -2972,7 +3091,7 @@ def selftest(argv):
         ok = False
         lines.append("FAIL: --expect-ai was given but the AI packages did not import")
     elif not expect_ai and not ai_ok:
-        lines.append("(AI parts not included - fine for the Lite version)")
+        lines.append("(AI parts not included - fine when running from source without torch)")
     lines.append("SELFTEST " + ("OK" if ok else "FAILED"))
     text = "\n".join(lines) + "\n"
     if out:
@@ -3009,6 +3128,7 @@ def main():
     if note:
         messagebox.showinfo("Project folder", note)
     app = AnnotatorApp(root, project_root)
+    root.after(700, app.first_run_models_prompt)
     root.mainloop()
 
 

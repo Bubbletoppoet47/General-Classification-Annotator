@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2 - 2026-10-29
+
+- One Windows program instead of Lite and AI: `GeneralClassificationAnnotator.zip`.
+- Ready-made AI models are downloaded from the project's GitHub `models` release instead of being bundled. A first-start
+  question offers the newest of each size, all of them, or none; File > Download models from GitHub does it any time.
+
 ## 1.0.1 - 2026-10-29
 
 - New logo and app icon (sorted G, C, A boxes). Used by the Windows programs and the program window.
