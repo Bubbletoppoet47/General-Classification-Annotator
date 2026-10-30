@@ -1,0 +1,16 @@
+{
+  "format": "gimble-model-v1",
+  "kind": "assist",
+  "size": "n",
+  "created": 1791464947.249881,
+  "trainer": "Ian_Selga",
+  "classes": [
+    "person"
+  ],
+  "scores": {
+    "map50": 0.7508,
+    "map50_95": 0.5683
+  },
+  "based_on": null,
+  "pasted": false
+}

@@ -1,0 +1,27 @@
+name: Publish models
+
+# Uploads the files in models/ to the pre-release tagged "models" (made if it does not exist yet).
+# The annotator's File > Download models from GitHub reads that release. It is a pre-release so it never counts as
+# the program's newest version for the update check.
+on:
+  workflow_dispatch:
+
+jobs:
+  models:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create or update the models release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -l models
+          if ! gh release view models >/dev/null 2>&1; then
+            gh release create models --prerelease --latest=false --target "$GITHUB_SHA" \
+              --title "Ready-made AI models" \
+              --notes "Models the annotator downloads from File > Download models from GitHub. You do not need to download these by hand."
+          fi
+          gh release upload models models/*.pt models/*.json --clobber
+          gh release view models --json assets --jq '.assets[].name'
