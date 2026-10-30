@@ -17,11 +17,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set +e
+          fail() { echo "::error::$1: $(echo "$2" | tr '\n' ' ' | cut -c1-400)"; exit 1; }
           ls -l models
           if ! gh release view models >/dev/null 2>&1; then
-            gh release create models --prerelease --latest=false --target "$GITHUB_SHA" \
+            out=$(gh release create models --prerelease --latest=false --target "$GITHUB_SHA" \
               --title "Ready-made AI models" \
-              --notes "Models the annotator downloads from File > Download models from GitHub. You do not need to download these by hand."
+              --notes "Models the annotator downloads from File > Download models from GitHub. You do not need to download these by hand." 2>&1) || fail "create failed" "$out"
           fi
-          gh release upload models models/*.pt models/*.json --clobber
+          out=$(gh release upload models models/*.pt models/*.json --clobber 2>&1) || fail "upload failed" "$out"
           gh release view models --json assets --jq '.assets[].name'
