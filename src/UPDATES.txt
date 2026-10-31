@@ -5,6 +5,13 @@ To update: use File > Check for updates in the annotator (after the first time),
 IMPORTANT: copy these files INTO your existing annotator folder and choose "replace files".
 Never replace the whole folder - your project (GimbleDataset) lives there.
 
+2026-10-31 - small automatic updates (version 1.2.0)
+- File > Check for updates now installs the update itself and restarts: it downloads only the program's code
+  (about 1 MB, not the 283 MB zip). If a new version can't start, the previous one is put back automatically.
+- Your Dataset, models and settings are not touched. Old copies are kept in the _previous folder.
+- Only this one time: if you are on an older version, download the full zip once to get the new layout.
+- If an update ever changes the libraries (PyTorch ...), it says so and opens the download page instead.
+
 2026-10-31 - annotate from a tablet's browser, shorter messages (version 1.1.0)
 - File > Open in browser (tablet)... shows an address, a QR code and a new random code. On a tablet on the same
   Wi-Fi, open it and annotate: the Apple Pencil draws and edits boxes, fingers pan and zoom. Buttons: previous/next,

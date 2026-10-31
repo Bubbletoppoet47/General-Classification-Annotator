@@ -50,6 +50,38 @@ assert "up to date" in msgs[-1]
 a._show_github_result({"ok": False, "error": "Couldn't reach GitHub (x).", "newer": False})
 assert "reach GitHub" in msgs[-1]
 
+# ---- a small update (code only) installs itself and restarts; a changed runtime sends you to the full download
+res = {"ok": True, "error": None, "newer": True, "current": "1.0.0", "latest": "v1.2.0", "notes": "n", "url": "http://dl", "assets": []}
+done_calls, relaunched = [], []
+a._relaunch = lambda root_dir: relaunched.append(root_dir)
+asked.clear(); opened.clear()
+a._show_github_result(res, plan=lambda r, rt: {"mode": "code", "manifest": {}, "url": "u", "bytes": 3 * 1048576},
+                      apply=lambda d, p, cb: (cb(1048576), done_calls.append(d), "1.2.0")[2])
+t0 = time.time()
+while not relaunched and time.time() - t0 < 10:
+    root.update(); time.sleep(0.02)
+assert "3 MB" in asked[0] and "restarts" in asked[0] and done_calls == [a.APP_DIR] and relaunched == [a.project.root] and not opened
+assert not a._bg_job and a.progress_var.get() == ""
+# a failed update changes nothing and says why
+errs = []; messagebox.showerror = lambda t, m, **k: errs.append(m)
+relaunched.clear(); asked.clear()
+a._show_github_result(res, plan=lambda r, rt: {"mode": "code", "manifest": {}, "url": "u", "bytes": 1},
+                      apply=lambda d, p, cb: (_ for _ in ()).throw(OSError("The program folder isn't writable")))
+t0 = time.time()
+while not errs and time.time() - t0 < 10:
+    root.update(); time.sleep(0.02)
+assert "isn't writable" in errs[0] and "Nothing was changed" in errs[0] and not relaunched and not a._bg_job
+# declined: nothing happens
+asked.clear(); done_calls.clear(); messagebox.askyesno = lambda t, m, **k: (asked.append(m), False)[1]
+a._show_github_result(res, plan=lambda r, rt: {"mode": "code", "manifest": {}, "url": "u", "bytes": 1}, apply=lambda *x: done_calls.append(1))
+assert asked and not done_calls
+# runtime changed: the page opens (after asking), and the question says why
+messagebox.askyesno = lambda t, m, **k: (asked.append(m), True)[1]; asked.clear(); opened.clear()
+a._show_github_result(res, plan=lambda r, rt: {"mode": "full", "manifest": {}})
+assert "libraries" in asked[0] and "full download" in asked[0] and opened == ["http://dl"]
+
+del a._relaunch                                          # back to the real one
+
 # ---- relaunch: the packaged program starts itself (no script path), with a clean PyInstaller environment
 cmds = []
 _real_popen = subprocess.Popen

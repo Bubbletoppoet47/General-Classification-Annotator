@@ -35,8 +35,10 @@ only (the page is not encrypted). Stop sharing closes it.
 
 ## Updating
 
-- **Windows program:** File > Check for updates asks GitHub for the newest release and opens its download page. Download
-  the new file, close the program, and run the new one. Your project and settings are not touched.
+- **Windows program:** File > Check for updates shows what's new and, if you agree, downloads just the program's code
+  (about 1 MB), swaps it in and restarts. The old code is kept in `_previous`, and a version that can't start is rolled back
+  automatically. If an update changes the libraries (PyTorch ...) it says so and opens the download page for the full zip.
+  Your project, models and settings are not touched. The program folder must be one you can write to.
 - **Running from source:** File > Check for updates compares the program files with an `Annotator_Share` folder (File >
   Update folder location picks it), keeps the old files in `_previous`, replaces them, and reopens. Or just `git pull`.
 

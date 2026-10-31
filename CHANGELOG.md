@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0 - 2026-10-31
+
+- Small automatic updates for the Windows program: the program's code is now plain `.py` files in an `app` folder beside a
+  launcher `.exe`; File > Check for updates downloads only that (about 1 MB), swaps it, keeps the old one in `_previous` and
+  restarts. A version that fails to start is rolled back automatically. If the libraries change, the full download is needed.
+- Each release now also has `GeneralClassificationAnnotator-code.zip` and `update-manifest.json`.
+
 ## 1.1.0 - 2026-10-31
 
 - Tablet / browser mode: File > Open in browser (tablet)... (address, QR code, random 6-digit code per start).

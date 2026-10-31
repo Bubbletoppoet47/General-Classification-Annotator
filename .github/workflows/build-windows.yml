@@ -2,7 +2,7 @@ name: Build Windows programs
 
 # Run it by hand: Actions tab > "Build Windows programs" > Run workflow.
 #   publish unticked = just build the program and keep them as downloadable build artifacts (a dry run).
-#   publish ticked   = also make the GitHub release "v<APP_VERSION>" (the number in src/app_update.py) and attach the zip.
+#   publish ticked   = also make the GitHub release "v<APP_VERSION>" (the number in src/app_update.py) and attach the zip, the small code zip and update-manifest.json.
 # Pushing a tag like v1.0.0 does the same as ticking publish (the tag must match APP_VERSION).
 on:
   workflow_dispatch:
@@ -44,6 +44,8 @@ jobs:
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r src/requirements.txt -r requirements-build.txt
       - run: pyinstaller packaging/annotator.spec --noconfirm
+      - name: Put the program's code beside the .exe and make the small-update files
+        run: python packaging/make_release.py dist/GeneralClassificationAnnotator release-files
       - name: Self-test the built program (the AI packages must import)
         shell: pwsh
         run: |
@@ -53,14 +55,14 @@ jobs:
       - name: Zip the folder (GitHub allows 2000 MB per release file)
         shell: pwsh
         run: |
-          Compress-Archive -Path dist/GeneralClassificationAnnotator -DestinationPath GeneralClassificationAnnotator.zip -CompressionLevel Optimal
-          $mb = [math]::Round((Get-Item GeneralClassificationAnnotator.zip).Length / 1MB)
+          Compress-Archive -Path dist/GeneralClassificationAnnotator -DestinationPath release-files/GeneralClassificationAnnotator.zip -CompressionLevel Optimal
+          $mb = [math]::Round((Get-Item release-files/GeneralClassificationAnnotator.zip).Length / 1MB)
           Write-Host "zip is $mb MB"
           if ($mb -ge 2000) { throw "the zip is $mb MB - over the 2000 MB GitHub limit for a release file" }
       - uses: actions/upload-artifact@v4
         with:
           name: program
-          path: GeneralClassificationAnnotator.zip
+          path: release-files
 
   publish:
     needs: [build]

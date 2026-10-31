@@ -1,8 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
-# The program: a FOLDER (too big for one file) with CPU torch + ultralytics, so pre-labeling works.
-# The ready-made models are NOT inside; the program downloads them from GitHub when you ask.
+# The program: a launcher .exe plus a FOLDER of libraries (CPU torch + ultralytics, so pre-labeling works).
+# The program's own code is NOT packed into the .exe: packaging/make_release.py puts it as plain .py files in an
+# `app` folder next to the .exe, so an update only has to swap that small folder (see src/app_update.py).
+# The ready-made models are not inside either; the program downloads them from GitHub when you ask.
 #     pyinstaller packaging/annotator.spec --noconfirm
-# Result: dist/GeneralClassificationAnnotator/  (zipped for the release)
+#     python packaging/make_release.py dist/GeneralClassificationAnnotator release-files
 import os
 from PyInstaller.utils.hooks import collect_all, collect_data_files
 
@@ -10,16 +12,24 @@ ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))
 SRC = os.path.join(ROOT, "src")
 ICON = os.path.join(ROOT, "assets", "icon.ico")
 
-ul_datas, ul_bins, ul_hidden = collect_all("ultralytics")
+# our own modules: analysed (so the libraries they use get packed) but kept OUT of the .exe
+OURS = ["annotator_gui", "annotator_core", "app_update", "hotkeys", "share_zip", "model_library", "model_registry",
+        "model_download", "model_assist", "gimble_assist", "gimble_data", "gimble_model", "web_mode", "web_page"]
+
+try:
+    ul_datas, ul_bins, ul_hidden = collect_all("ultralytics")
+except Exception:                      # building the launcher without the AI packages (tests only)
+    ul_datas, ul_bins, ul_hidden = [], [], []
 a = Analysis(
-    [os.path.join(SRC, "annotator_gui.py")],
+    [os.path.join(SPECPATH, "launcher.py")],
     pathex=[SRC],
     binaries=ul_bins,
-    datas=collect_data_files("sv_ttk") + ul_datas + [(os.path.join(ROOT, "assets", "icon_256.png"), "assets")],
-    hiddenimports=ul_hidden + ["annotator_core", "app_update", "hotkeys", "share_zip", "model_library",
-                               "model_registry", "model_download", "web_mode", "web_page", "qrcode", "PIL.ImageTk", "model_assist", "gimble_assist", "gimble_data", "gimble_model"],
+    datas=collect_data_files("sv_ttk") + ul_datas,
+    hiddenimports=ul_hidden + OURS + ["qrcode", "PIL.ImageTk", "tkinter", "tkinter.ttk", "tkinter.filedialog",
+                                      "tkinter.messagebox", "tkinter.simpledialog"],
     excludes=["IPython", "pytest", "tensorboard"],
 )
+a.pure[:] = [t for t in a.pure if t[0] not in OURS]
 pyz = PYZ(a.pure)
 exe = EXE(
     pyz, a.scripts, [],

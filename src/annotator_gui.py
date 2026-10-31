@@ -188,9 +188,10 @@ class AnnotatorApp:
         """Use the logo as the window icon. Silently does nothing if the picture is missing."""
         try:
             import sys
-            base = getattr(sys, "_MEIPASS", None) or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-            path = os.path.join(base, "assets", "icon_256.png")
-            if os.path.exists(path):
+            here = os.path.dirname(os.path.abspath(__file__))
+            path = next((c for c in (os.path.join(here, "assets", "icon_256.png"),
+                                     os.path.join(here, "..", "assets", "icon_256.png")) if os.path.exists(c)), None)
+            if path:
                 self._icon_img = PhotoImage(file=path)
                 self.root.iconphoto(True, self._icon_img)
         except Exception:
@@ -484,21 +485,63 @@ class AnnotatorApp:
         threading.Thread(target=worker, daemon=True).start()
         poll()
 
-    def _show_github_result(self, res):
+    def _show_github_result(self, res, plan=None, apply=None):
+        """Packaged program: tells you what GitHub has. A small update (just the code) installs itself and restarts;
+        anything else opens the download page. `plan` / `apply` can be swapped for fakes in tests."""
         if not res['ok']:
             messagebox.showinfo("Check for updates", res['error'])
             return
         if not res['newer']:
             messagebox.showinfo("Check for updates", f"You are up to date (version {res['current']}).")
             return
-        text = f"Version {res['latest'].lstrip('vV')} is available. You have {res['current']}."
-        if res['notes']:
-            text += "\n\nWhat's new:\n" + res['notes'][:1500]
-        text += ("\n\nOpen the download page? Download the new file, close this program, and run the new one. "
-                 "Your project, sessions and settings are not touched.")
-        if messagebox.askyesno("Update available", text):
+        new = res['latest'].lstrip('vV')
+        notes = ("\n\nWhat's new:\n" + res['notes'][:1200]) if res['notes'] else ""
+        try:
+            plan = (plan or au.plan_update)(res, au.runtime_id())
+        except Exception:  # noqa: BLE001
+            plan = {"mode": "page"}
+        if plan["mode"] == "code":
+            mb = max(1, round(plan.get("bytes", 0) / 1048576))
+            if messagebox.askyesno("Update available", f"Version {new} is available (you have {res['current']}). "
+                                   f"It downloads about {mb} MB and restarts the program.{notes}\n\nUpdate now?"):
+                self._apply_code_update(plan, apply or au.apply_code_update)
+            return
+        why = ("This update changes the program's libraries, so it needs the full download. "
+               if plan["mode"] == "full" else "")
+        if messagebox.askyesno("Update available", f"Version {new} is available (you have {res['current']}). "
+                               f"{why}Open the download page?{notes}"):
             import webbrowser
             webbrowser.open(res['url'])
+
+    def _apply_code_update(self, plan, apply):
+        """Downloads and swaps the app folder in the background, then restarts."""
+        if self._bg_blocked():
+            return
+        self._bg_job = True
+        box = {}
+
+        def worker():
+            try:
+                box['v'] = apply(self.APP_DIR, plan, lambda n: box.__setitem__('n', n))
+            except Exception as e:  # noqa: BLE001
+                box['err'] = str(e)
+
+        def poll():
+            if 'v' in box or 'err' in box:
+                self._bg_job = False
+                self.progress_var.set("")
+                if 'err' in box:
+                    messagebox.showerror("Update failed", box['err'] + "\nNothing was changed.")
+                else:
+                    self._relaunch(self.project.root)
+                return
+            if box.get('n'):
+                self.progress_var.set(f"Downloading update: {box['n'] / 1048576:.1f} MB")
+            self.root.after(150, poll)
+
+        self.progress_var.set("Downloading update...")
+        threading.Thread(target=worker, daemon=True).start()
+        poll()
 
     def _finish_update(self, requirements):
         if requirements:
@@ -3066,7 +3109,11 @@ def selftest(argv):
     i = argv.index("--selftest")
     out = argv[i + 1] if len(argv) > i + 1 and not argv[i + 1].startswith("--") else None
     expect_ai = "--expect-ai" in argv
-    lines, ok = [f"version {au.APP_VERSION}", f"packaged {au.is_frozen()}", f"app folder {au.app_dir(__file__)}"], True
+    lines, ok = [f"version {au.APP_VERSION}", f"packaged {au.is_frozen()}", f"app folder {au.app_dir(__file__)}",
+                 f"code loaded from {os.path.abspath(__file__)}", f"runtime {au.runtime_id()}"], True
+    if au.is_frozen() and os.path.basename(os.path.dirname(os.path.abspath(__file__))) != "app":
+        ok = False
+        lines.append("FAIL: the packaged program is not running the code in its app folder")
     tmp = tempfile.mkdtemp(prefix="gca_selftest_")
     try:
         sz.CONFIG_PATH = os.path.join(tmp, "cfg.json")                 # never the real ~/.trash_annotator.json
@@ -3134,6 +3181,9 @@ def main():
         messagebox.showinfo("Project folder", note)
     app = AnnotatorApp(root, project_root)
     root.after(700, app.first_run_models_prompt)
+    root.after(3000, au.mark_started)
+    if globals().get('UPDATE_ROLLED_BACK'):
+        root.after(900, lambda: messagebox.showinfo('Update', 'The new version could not start, so the previous version was restored.'))
     root.mainloop()
 
 
