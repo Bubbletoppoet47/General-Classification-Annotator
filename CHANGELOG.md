@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0 - 2026-10-31
+
+- Tablet / browser mode: File > Open in browser (tablet)... (address, QR code, random 6-digit code per start).
+  Pen draws and edits boxes, fingers pan and zoom, Undo / Delete / AI / Publish / Confirm. No LiDAR in the web page.
+- Shorter dialog messages and side-panel help text.
+
 ## 1.0.2 - 2026-10-29
 
 - One Windows program instead of Lite and AI: `GeneralClassificationAnnotator.zip`.

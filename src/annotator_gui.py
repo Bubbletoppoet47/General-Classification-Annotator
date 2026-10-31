@@ -52,6 +52,7 @@ import annotator_core as ac
 import model_registry as mr
 import model_library as ml
 import model_download as md
+import web_mode as wm
 import app_update as au
 import hotkeys as hk
 import share_zip as sz
@@ -176,8 +177,7 @@ class AnnotatorApp:
             n = len(self.project.startup_reconciled)
             messagebox.showinfo(
                 "Cleaned up deleted files",
-                f"Noticed {n} image(s) that were deleted outside the app since it was "
-                f"last open, and cleaned up their tracking (labels, distortions) to match."
+                f"{n} image(s) were deleted outside the app. Their labels were cleaned up."
             )
 
     # ------------------------------------------------------------------
@@ -277,50 +277,28 @@ class AnnotatorApp:
                                       font=("Consolas", 10))
         self.class_listbox.pack(fill=BOTH, expand=True, pady=(6, 6))
         self.class_listbox.bind("<<ListboxSelect>>", self._on_class_select)
-        ttk.Label(left, text="Press a class's key (shown in [ ]) to set\n"
-                              "the active class - if a box is selected,\n"
-                              "it relabels that box too. Add, rename or\n"
-                              "delete classes with Edit > Classes; change\n"
-                              "any key with Edit > Hotkeys (both saved\n"
-                              "with the project).",
+        ttk.Label(left, text="Press a class key [ ] to pick it. A selected box is relabeled too.\nEdit > Classes / Hotkeys to change.",
                   wraplength=200, justify=LEFT).pack(anchor="w")
 
         ttk.Separator(left, orient="horizontal").pack(fill=X, pady=10)
         ttk.Label(left, text="AI Assist", font=("Segoe UI", 11, "bold")).pack(anchor="w")
-        ttk.Label(left, text="Check classes to get live model\n"
-                              "predictions on the CURRENT photo only.\n"
-                              "Toggling re-evaluates it instantly.\n"
-                              "Never touches confirmed images or\n"
-                              "boxes you've drawn yourself.",
+        ttk.Label(left, text="Check classes for live predictions on this photo. Confirmed images are never touched.",
                   wraplength=200, justify=LEFT).pack(anchor="w", pady=(2, 6))
         self.ai_box = ttk.Frame(left)
         self.ai_box.pack(fill=X, anchor="w")
         self._build_ai_assist_checkboxes(self.ai_box)
         ttk.Button(left, text="Clear Boxes & Retry AI",
                    command=self.clear_and_retry_ai).pack(fill=X, pady=(8, 0))
-        ttk.Label(left, text="Wipes this image's boxes - confirmed or\n"
-                              "still a draft - and re-predicts it with\n"
-                              "whatever's loaded/checked above. Handy\n"
-                              "once you've trained a better checkpoint\n"
-                              "and want an older annotation reconsidered.",
+        ttk.Label(left, text="Wipes this image's boxes and predicts again.",
                   wraplength=200, justify=LEFT).pack(anchor="w", pady=(4, 0))
 
         ttk.Separator(left, orient="horizontal").pack(fill=X, pady=10)
         ttk.Label(left, text="Selected box", font=("Segoe UI", 11, "bold")).pack(anchor="w")
         ttk.Button(left, text="Delete Selected Box", command=self.delete_selected_box).pack(fill=X, pady=(6, 0))
         ttk.Button(left, text="Clear Distance of Box", command=self.clear_selected_distance).pack(fill=X, pady=(6, 0))
-        ttk.Label(left, text="LiDAR dots + pick distance: one switch in the toolbar "
-                              "shows the dots and turns on picking. Hover a box - the nearest LiDAR point inside "
-                              "it lights up with its distance - and click to "
-                              "attach that distance to the box. Right-click "
-                              "clears it. Drag still draws boxes.",
+        ttk.Label(left, text="LiDAR switch (toolbar): hover a box, click to attach its distance, right-click to clear.",
                   wraplength=200, justify=LEFT).pack(anchor="w", pady=(6, 0))
-        ttk.Label(left, text="Drag: draw a new box, even on top of\n"
-                              "existing ones - crowded scenes never\n"
-                              "block you. Click: select a box (for\n"
-                              "relabeling with the class keys, or this\n"
-                              "button/the delete key). Double-click or\n"
-                              "right-click a box: delete it instantly.",
+        ttk.Label(left, text="Drag: new box. Click: select. Double- or right-click: delete.",
                   wraplength=200, justify=LEFT).pack(anchor="w", pady=(10, 0))
 
         # --- center: canvas ---
@@ -348,17 +326,7 @@ class AnnotatorApp:
         right.pack(side=RIGHT, fill=Y)
         right.pack_propagate(False)
         ttk.Label(right, text="Images", font=("Segoe UI", 11, "bold")).pack(anchor="w")
-        ttk.Label(right, text="Shows images still needing annotation.\n"
-                              "Annotated ones drop off once you leave them.\n"
-                              "[?] = AI pre-labeled, not yet reviewed by you -\n"
-                              "boxes show dashed until you fix them or click\n"
-                              "Confirm Image. On disk: images/unannotated/ vs\n"
-                              "images/annotated/ - safe to delete from\n"
-                              "unannotated/ by hand, it's never used in\n"
-                              "training. Deleted something? Hit Sync Deleted\n"
-                              "Files (or just reopen the project). Each Gimble\n"
-                              "sample's LiDAR depth lives in depth/ and follows\n"
-                              "the image through rotate/delete.",
+        ttk.Label(right, text="Images still to annotate. [?] = AI draft, not yet confirmed.",
                   wraplength=240, justify=LEFT).pack(anchor="w", pady=(2, 6))
 
         ttk.Label(right, text="Working set", font=("Segoe UI", 10, "bold")).pack(anchor="w")
@@ -410,12 +378,13 @@ class AnnotatorApp:
         file_m.add_command(label="Shared folder location...", command=self.choose_shared_dir)
         file_m.add_command(label="Models folder location...", command=self.choose_models_dir)
         file_m.add_command(label="Download models from GitHub...", command=self.download_models)
+        file_m.add_command(label="Open in browser (tablet)...", command=self.open_in_browser)
         file_m.add_separator()
         file_m.add_command(label="Check for updates...", command=self.check_for_updates)
         if not au.is_frozen():
             file_m.add_command(label="Update folder location...", command=self.choose_update_dir)
         file_m.add_separator()
-        file_m.add_command(label="Exit", command=self.root.destroy)
+        file_m.add_command(label="Exit", command=self._exit)
         edit_m = Menu(bar, tearoff=0)
         edit_m.add_command(label="Classes...", command=self.manage_classes)
         edit_m.add_command(label="Hotkeys...", command=self.edit_hotkeys)
@@ -533,9 +502,7 @@ class AnnotatorApp:
 
     def _finish_update(self, requirements):
         if requirements:
-            messagebox.showinfo("Updated", "Updated. This update changes the packages the annotator needs.\n\n"
-                                "Open a console in the annotator folder and run:\n    pip install -r requirements.txt\n\n"
-                                "then start the annotator again.")
+            messagebox.showinfo("Updated", "Updated. New packages are needed: run\n    pip install -r requirements.txt\nthen start the annotator again.")
             self.root.destroy()
             return
         self._relaunch(self.project.root)
@@ -555,12 +522,10 @@ class AnnotatorApp:
             return
         if not os.path.exists(os.path.join(d, "manifest.json")):
             if not messagebox.askyesno("Dataset location",
-                                       f"There is no annotator dataset in:\n{d}\n\n"
-                                       "(no manifest.json). Start a NEW empty dataset there?"):
+                                       f"No dataset in:\n{d}\nStart a new empty one there?"):
                 return
         if not messagebox.askyesno("Dataset location",
-                                   f"Open this dataset?\n{d}\n\nThe annotator will close and reopen on it. "
-                                   "The one that is open now is not changed."):
+                                   f"Open this dataset?\n{d}\nThe annotator will reopen on it."):
             return
         os.makedirs(d, exist_ok=True)
         key = os.path.normcase(os.path.abspath(self.APP_DIR))
@@ -591,7 +556,66 @@ class AnnotatorApp:
         self._save_cfg()
         return self.cfg['models_dir']
 
+    # ---- tablet / browser mode (File > Open in browser)
+
+    def open_in_browser(self):
+        """Starts the little web server (once) and shows the address, QR code and this time's access code."""
+        w = getattr(self, "_web", None)
+        if w is None or not w.running:
+            def predict(img_id):
+                ma = self.model_assist
+                if ma is None:
+                    raise RuntimeError("Load an AI model on the computer first (File > Insert Assist Model).")
+                with self._web_ai_lock:
+                    return self._map_model_classes(ma.predict_boxes(self.project.image_path(img_id),
+                                                                    conf_threshold=self.model_conf))
+            self._web_ai_lock = threading.Lock()
+            w = wm.WebShare(self.project, predict=predict,
+                            publish=lambda: self.root.after(0, self.publish_to_shared),
+                            on_change=lambda: self.root.after(0, self._refresh_image_list))
+            try:
+                w.start()
+            except OSError as e:
+                messagebox.showerror("Open in browser", f"Couldn't start: {e}")
+                return None
+            self._web = w
+        win = getattr(self, "_web_win", None)
+        if win is not None and win.winfo_exists():
+            win.lift()
+            return win
+        win = Toplevel(self.root)
+        self._web_win = win
+        win.title("Open in browser")
+        win.transient(self.root)
+        win.resizable(False, False)
+        ttk.Label(win, text="On the tablet (same Wi-Fi), scan this or open the address:").pack(padx=14, pady=(14, 6), anchor="w")
+        try:
+            import qrcode
+            from PIL import ImageTk
+            self._web_qr = ImageTk.PhotoImage(qrcode.make(w.login_url).convert("RGB").resize((220, 220)))
+            ttk.Label(win, image=self._web_qr).pack(padx=14)
+        except Exception:  # noqa: BLE001  (no QR picture is fine; the address and code still work)
+            pass
+        ttk.Label(win, text=w.url, font=("TkDefaultFont", 14, "bold")).pack(padx=14, pady=(8, 0))
+        ttk.Label(win, text=f"Code: {w.code}", font=("TkDefaultFont", 20, "bold")).pack(padx=14, pady=4)
+        ttk.Label(win, text="Pen draws. Fingers pan and zoom. Own Wi-Fi only.").pack(padx=14, pady=(0, 8))
+        row = ttk.Frame(win)
+        row.pack(padx=14, pady=(0, 14), anchor="e")
+
+        def stop():
+            w.stop()
+            win.destroy()
+        ttk.Button(row, text="Stop sharing", command=stop).pack(side=RIGHT)
+        ttk.Button(row, text="Hide", command=win.destroy).pack(side=RIGHT, padx=8)
+        return win
+
     # ---- ready-made models from GitHub (File > Download models from GitHub, and once on the very first start)
+
+    def _exit(self):
+        w = getattr(self, "_web", None)
+        if w is not None:
+            w.stop()
+        self.root.destroy()
 
     def _default_models_dir(self):
         return os.path.join(au.app_dir(__file__), "Models")
@@ -620,8 +644,8 @@ class AnnotatorApp:
         finally:
             self.root.config(cursor="")
         if err or not entries:
-            msg = ("Couldn't reach the models on GitHub right now. Check your internet, then use File > Download "
-                   "models from GitHub... any time." if err else "There are no models on the GitHub page yet.")
+            msg = ("Couldn't reach GitHub. Check your internet and try File > Download models from GitHub later."
+                   if err else "No models on GitHub yet.")
             messagebox.showinfo("Download models", msg)
             return None
         models_dir = self.cfg.get('models_dir') or self._default_models_dir()
@@ -629,10 +653,8 @@ class AnnotatorApp:
         win.title("Download models")
         win.transient(self.root)
         win.resizable(False, False)
-        head = ("Welcome! Do you want to download ready-made AI models? They pre-label your photos so you only fix the "
-                "boxes. They are small and you can do this later from File > Download models from GitHub."
-                if first_run else
-                "Pick which ready-made AI models to download from GitHub.")
+        head = ("Download ready-made AI models? They pre-label photos for you. You can do this later from "
+                "File > Download models from GitHub." if first_run else "Pick the AI models to download.")
         ttk.Label(win, text=head, wraplength=460, justify=LEFT).pack(padx=14, pady=(14, 8), anchor="w")
         mode = StringVar(value="newest")
         newest_n = len(md.pick(entries, "newest"))
@@ -935,9 +957,7 @@ class AnnotatorApp:
         tree.column("#0", width=300)
         tree.column("key", width=110, anchor="center")
         tree.pack(fill=BOTH, expand=True, padx=12, pady=4)
-        note = ttk.Label(win, text="Pick an action, then press Change... and hit the new key (Ctrl / Shift "
-                                   "combinations work too). A key can only do one thing - giving one that is "
-                                   "already in use takes it from the other action.",
+        note = ttk.Label(win, text="Pick an action, press Change..., then the new key. A key does one thing only.",
                          wraplength=440, justify=LEFT)
         note.pack(anchor="w", padx=12, pady=(0, 4))
 
@@ -1225,8 +1245,7 @@ class AnnotatorApp:
                     pass
                 if err:
                     self.progress_var.set("")
-                    messagebox.showerror("Couldn't delete the class", err + "\n\nYour label files were backed up in "
-                                         "_class_backups first.", parent=win)
+                    messagebox.showerror("Couldn't delete the class", err + "\nLabels were backed up in _class_backups.", parent=win)
                     return
                 msg = f"Deleted class '{name}'."
                 if r['removed']:
@@ -1274,8 +1293,7 @@ class AnnotatorApp:
         target = StringVar(value=others[0])
         ttk.Combobox(row, textvariable=target, values=others, state="readonly", width=22).pack(side=LEFT, padx=6)
         ttk.Label(dlg, justify=LEFT, wraplength=380,
-                  text="A copy of your label files is saved to _class_backups first. Images left with no boxes "
-                       "go back to the to-do list. This renumbers the classes after it.").pack(
+                  text="Labels are backed up in _class_backups first.").pack(
             padx=14, pady=(10, 4), anchor="w")
         out = {'v': None}
 
@@ -1457,8 +1475,7 @@ class AnnotatorApp:
             detail += f" ({len(self.boxes)} box(es), {status})"
         if not messagebox.askyesno(
             "Delete this frame?",
-            f"Permanently delete {detail} and its image/label file(s) from disk?\n\n"
-            "This can't be undone."
+            f"Delete {detail} and its files? This can't be undone."
         ):
             return
 
@@ -1940,8 +1957,7 @@ class AnnotatorApp:
         busy = self._bg_job or self._predict_busy
         if busy:
             messagebox.showinfo(
-                "Busy", "Background work (import, publish or AI prediction) is still "
-                "running. Try again in a moment.")
+                "Busy", "Still working (import, publish or AI). Try again in a moment.")
         return bool(busy)
 
     def manage_sessions(self):
@@ -2013,22 +2029,21 @@ class AnnotatorApp:
                 messagebox.showinfo("Pick a session", "Click a session in the list first.", parent=win)
                 return None
             if sel[0].startswith("person:"):
-                messagebox.showinfo("Open their data first", "That row is a person's data - click Access to open it, "
-                                    "then pick one of their sets.", parent=win)
+                messagebox.showinfo("Open their data first", "Click Access first, then pick one of their sets.", parent=win)
                 return None
             return sel[0]
 
         def do_access():
             sel = tree.selection()
             if not sel:
-                messagebox.showinfo("Pick a person", "Click a person's row first (the one starting with their name in [ ]).", parent=win)
+                messagebox.showinfo("Pick a person", "Click a person's row first.", parent=win)
                 return
             if sel[0].startswith("person:"):
                 pid = sel[0][len("person:"):]
             else:
                 pid = sz.session_owner(self.project, sel[0], self.me)
                 if not self._is_foreign_owner(pid):
-                    messagebox.showinfo("Your own data", "That set is yours - Access is only for other people's data.", parent=win)
+                    messagebox.showinfo("Your own data", "That set is yours. Access is for other people's data.", parent=win)
                     return
             if pid in self.access_people:
                 self.access_people.discard(pid)
@@ -2084,10 +2099,8 @@ class AnnotatorApp:
             r = next(x for x in self.project.session_summary() if x['session_id'] == sid)
             if not messagebox.askyesno(
                     "Delete session?",
-                    f"Permanently delete session '{sid}' from the project?\n\n"
-                    f"{r['samples']} sample(s), {r['annotated']} annotated - their images, LiDAR depth, "
-                    "boxes and distance picks are all removed, and they drop out of "
-                    "the shared data.\n\nThe original recording on the drive is not touched.\n"
+                    f"Delete session '{sid}'? ({r['samples']} samples, {r['annotated']} annotated)\n"
+                    "Its images, boxes and distances are removed. The original recording is not touched. "
                     "This can't be undone.", icon="warning", default="no", parent=win):
                 return
             cur_in = self.current_image_id in set(self.project.session_image_ids(sid))
@@ -2213,7 +2226,7 @@ class AnnotatorApp:
         if d and os.path.isdir(d):
             return d
         if d:
-            messagebox.showinfo("Shared folder not found", f"The shared folder isn't at\n{d}\nany more (drive not synced?). Pick it again.")
+            messagebox.showinfo("Shared folder not found", f"Shared folder not found at\n{d}\nPick it again.")
         return self.choose_shared_dir()
 
     def _share_fail(self, title, err):
@@ -2254,7 +2267,7 @@ class AnnotatorApp:
         if not res['count']:
             messagebox.showinfo("Nothing to publish", f"Your folder in the shared folder already has all {res['checked']} "
                                 "annotated image(s) you have made or edited." if res['checked'] else
-                                "You have no annotated images to publish yet (only annotated images are shared).")
+                                "No annotated images to publish yet.")
             return
         parts = []
         if res['new']:
@@ -2286,9 +2299,7 @@ class AnnotatorApp:
         win.geometry("700x420")
         win.transient(self.root)
         ttk.Label(win, wraplength=660, justify=LEFT, text=(
-            "Pick the sets you want to look at or fix. They are copied into your project; whatever you change goes into "
-            "your own folder at the next Publish, and the images keep the original annotator's name. "
-            "Images you do not touch are not published again.")).pack(anchor="w", padx=12, pady=10)
+            "Pick sets to fix. They are copied into your project, and your changes go out at the next Publish.")).pack(anchor="w", padx=12, pady=10)
         tree = Treeview(win, columns=("person", "set", "images", "depth"), show="headings", selectmode="extended", height=10)
         for c, text, wd, anchor in (("person", "Annotated by", 160, "w"), ("set", "Set", 260, "w"),
                                      ("images", "Images", 80, "e"), ("depth", "With depth", 90, "e")):
@@ -2366,8 +2377,7 @@ class AnnotatorApp:
         if report['added_classes']:
             parts.append("new class(es): " + ", ".join(report['added_classes']))
         messagebox.showinfo("Import complete", ("Imported: " + "; ".join(parts) if parts else "Nothing new to import")
-                            + f". ({report['same']} already identical.) Pick the set in the Working set box; "
-                            "edit, then File > Publish to shared folder.")
+                            + f". ({report['same']} already identical.) Pick it in the Working set box.")
 
     def thin_set(self, sid, parent=None):
         """Dialog: remove redundant frames from a set (e.g. a 60 fps video that is mostly repetition).
@@ -2383,8 +2393,7 @@ class AnnotatorApp:
         dlg.resizable(False, False)
         ttk.Label(dlg, justify=LEFT, wraplength=430,
                   text=f"'{sid}' has {total} frame(s), {annotated} annotated. Annotated frames are never removed. "
-                       "Removing frames deletes them from the project for good (importing the same video / "
-                       "session again would bring them back)."
+                       "Removed frames are deleted from the project."
                   ).pack(padx=14, pady=(14, 8), anchor="w")
         mode = StringVar(value="similar")
         nvar = StringVar(value="2")
@@ -2535,9 +2544,7 @@ class AnnotatorApp:
             if not sessions:
                 messagebox.showerror(
                     "Not a Gimble session",
-                    "That folder isn't a session (no index.csv + images/), and it doesn't "
-                    "contain any sessions either.\n\nPick a folder like\n"
-                    "dataset/20260930_095437")
+                    "No session in that folder (needs index.csv + images/). Pick a folder like 20260930_095437.")
                 return
             if not messagebox.askyesno(
                     "Import all sessions?",
@@ -2762,8 +2769,7 @@ class AnnotatorApp:
             self.ai_model_status_var.set("No model loaded")
             messagebox.showerror(
                 "No backup checkpoint found",
-                f"Couldn't find the original helper model at:\n\n{path}\n\n"
-                "Run update_model_backup.py first (after a training run has finished) to create one.")
+                f"No helper model at:\n{path}\nRun update_model_backup.py after a training run.")
             return
         try:
             if entry and entry['kind'] == 'scratch':
@@ -2778,8 +2784,7 @@ class AnnotatorApp:
             if au.is_frozen():
                 messagebox.showerror(
                     "AI models not included",
-                    "The AI parts of this copy of the program are missing or couldn't start.\n\n"
-                    "Please download the newest version from the releases page and run that one:\n"
+                    "The AI parts are missing. Download the newest version:\n"
                     f"{au.RELEASES_URL}")
             else:
                 messagebox.showerror(
@@ -2972,7 +2977,7 @@ class AnnotatorApp:
             if not messagebox.askyesno(
                 "Clear confirmed annotation?",
                 f"'{img_id}' is confirmed annotated with {n} box(es). Clear it and "
-                "send it back for a fresh AI pass?\n\nThis can't be undone."
+                "send it back for a fresh AI pass? This can't be undone."
             ):
                 return
             self.project.unannotate_image(img_id)

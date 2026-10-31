@@ -17,7 +17,7 @@ a = Analysis(
     binaries=ul_bins,
     datas=collect_data_files("sv_ttk") + ul_datas + [(os.path.join(ROOT, "assets", "icon_256.png"), "assets")],
     hiddenimports=ul_hidden + ["annotator_core", "app_update", "hotkeys", "share_zip", "model_library",
-                               "model_registry", "model_download", "model_assist", "gimble_assist", "gimble_data", "gimble_model"],
+                               "model_registry", "model_download", "web_mode", "web_page", "qrcode", "PIL.ImageTk", "model_assist", "gimble_assist", "gimble_data", "gimble_model"],
     excludes=["IPython", "pytest", "tensorboard"],
 )
 pyz = PYZ(a.pure)

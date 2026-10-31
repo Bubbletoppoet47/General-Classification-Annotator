@@ -7,6 +7,7 @@ pillow>=10.0
 numpy>=1.24
 opencv-python>=4.8        # File > Import Video, and the AI models
 sv-ttk>=2.5               # optional: the dark/light theme (the program still runs without it)
+qrcode>=7.4               # optional: the QR code in File > Open in browser (the address and code work without it)
 
 # AI features (the AI model box and File > Insert Assist / Scratch Model):
 torch>=2.2                # plain "pip install" gives the CPU build on Windows, which is fine for annotating.

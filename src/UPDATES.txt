@@ -5,6 +5,13 @@ To update: use File > Check for updates in the annotator (after the first time),
 IMPORTANT: copy these files INTO your existing annotator folder and choose "replace files".
 Never replace the whole folder - your project (GimbleDataset) lives there.
 
+2026-10-31 - annotate from a tablet's browser, shorter messages (version 1.1.0)
+- File > Open in browser (tablet)... shows an address, a QR code and a new random code. On a tablet on the same
+  Wi-Fi, open it and annotate: the Apple Pencil draws and edits boxes, fingers pan and zoom. Buttons: previous/next,
+  classes, Undo, Delete, AI, Fit, To do/All, Publish (runs on the computer) and Confirm. LiDAR is not in the web page.
+  Stop sharing closes it. Use it on your own Wi-Fi only.
+- Dialogs and side-panel help text in the program are shorter.
+
 2026-10-29 - one program, and ready-made AI models download from GitHub (version 1.0.2)
 - There is now just one Windows download: GeneralClassificationAnnotator.zip (unzip it and run the .exe inside).
   The separate Lite version is gone.
