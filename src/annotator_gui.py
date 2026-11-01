@@ -611,7 +611,6 @@ class AnnotatorApp:
                                                                     conf_threshold=self.model_conf))
             self._web_ai_lock = threading.Lock()
             w = wm.WebShare(self.project, predict=predict,
-                            publish=lambda: self.root.after(0, self.publish_to_shared),
                             on_change=lambda: self.root.after(0, self._refresh_image_list))
             try:
                 w.start()
@@ -638,7 +637,7 @@ class AnnotatorApp:
             pass
         ttk.Label(win, text=w.url, font=("TkDefaultFont", 14, "bold")).pack(padx=14, pady=(8, 0))
         ttk.Label(win, text=f"Code: {w.code}", font=("TkDefaultFont", 20, "bold")).pack(padx=14, pady=4)
-        ttk.Label(win, text="Pen draws. Fingers pan and zoom. Own Wi-Fi only.").pack(padx=14, pady=(0, 8))
+        ttk.Label(win, text="Pen draws. Fingers pan and zoom. Publish on this computer. Own Wi-Fi only.").pack(padx=14, pady=(0, 8))
         row = ttk.Frame(win)
         row.pack(padx=14, pady=(0, 14), anchor="e")
 

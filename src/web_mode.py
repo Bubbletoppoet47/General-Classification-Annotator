@@ -4,7 +4,8 @@ web_mode.py - annotate from a tablet's browser (File > Open in browser).
 The desktop program starts a small web server. A tablet on the same Wi-Fi opens the address, types the access code
 and name, and annotates with an Apple Pencil: the pen draws and edits boxes, fingers pan and zoom. Everything is
 stored by the normal Project on the computer; nothing is saved on the tablet. LiDAR / depth is not part of the web
-page. Publish runs on the computer, so the shared folder stays where it already is.
+page. Publishing is NOT possible from the tablet: it is done on the computer (File > Publish to shared folder).
+Nothing counts as confirmed until Confirm is pressed; edits before that are saved as an unconfirmed draft ("?").
 
 Safety: off until you start it; a new random 6-digit code every time; wrong codes lock a device out for a few minutes;
 plain HTTP, so use it on your own Wi-Fi only. No tkinter here (the GUI passes in what it needs), so it is testable.
@@ -68,11 +69,11 @@ def clean_boxes(raw, n_classes):
 
 
 class WebShare:
-    """predict(img_id) -> boxes (or raises) / None when no AI model is loaded; publish() starts a publish on the
-    computer; on_change() is told after the page changed something (so the desktop list can refresh)."""
+    """predict(img_id) -> boxes (or raises) / None when no AI model is loaded; on_change() is told after the page
+    changed something (so the desktop list can refresh)."""
 
-    def __init__(self, project, predict=None, publish=None, on_change=None, port=DEFAULT_PORT, code=None):
-        self.project, self.predict, self.publish, self.on_change = project, predict, publish, on_change
+    def __init__(self, project, predict=None, on_change=None, port=DEFAULT_PORT, code=None):
+        self.project, self.predict, self.on_change = project, predict, on_change
         self.port = port
         self.code = code or f"{secrets.randbelow(10**6):06d}"
         self.lock = threading.Lock()
@@ -145,12 +146,34 @@ class WebShare:
         return {"me": name, "classes": list(pr.classes), "total": len(ids), "done": done,
                 "ai": self.predict is not None}
 
-    def list_ids(self, which):
+    NO_SESSION = "~"           # images that belong to no session (single uploads)
+
+    def sessions(self):
+        """[{id, total, annotated, draft}] for every session (and the loose images, id '~'), plus the overall row."""
+        pr = self.project
+        rows, tot = {}, {"id": "", "total": 0, "annotated": 0, "draft": 0}
+        for i, info in pr.manifest["images"].items():
+            sid = info.get("session_id") or self.NO_SESSION
+            r = rows.setdefault(sid, {"id": sid, "total": 0, "annotated": 0, "draft": 0})
+            ann = bool(info.get("annotated"))
+            dr = (not ann) and bool(info.get("ai_pending"))
+            for x in (r, tot):
+                x["total"] += 1
+                x["annotated"] += 1 if ann else 0
+                x["draft"] += 1 if dr else 0
+        return [tot] + [rows[k] for k in sorted(rows, key=lambda k: (k == self.NO_SESSION, k))]
+
+    def list_ids(self, which, session=""):
+        """which: 'todo' (not confirmed), 'done' (confirmed) or 'all'. session '' = everything, '~' = loose images."""
         pr = self.project
         out = []
         for i in pr.list_images():
+            if session:
+                sid = pr.manifest["images"][i].get("session_id") or self.NO_SESSION
+                if sid != session:
+                    continue
             ann = pr.is_annotated(i)
-            if which == "todo" and ann:
+            if (which == "todo" and ann) or (which == "done" and not ann):
                 continue
             out.append([i, 2 if ann else (1 if pr.is_ai_pending(i) else 0)])
         return out
@@ -167,6 +190,13 @@ class WebShare:
                 "ai": pr.is_ai_pending(img_id)}
 
     def save_boxes(self, img_id, raw, name):
+        """An edit. A confirmed image stays confirmed; anything else is saved as an unconfirmed draft ('?')."""
+        return self._store(img_id, raw, name, confirm=False)
+
+    def confirm(self, img_id, raw, name):
+        return self._store(img_id, raw, name, confirm=True)
+
+    def _store(self, img_id, raw, name, confirm):
         pr = self.project
         self._known(img_id)
         boxes = clean_boxes(raw, len(pr.classes))
@@ -174,11 +204,14 @@ class WebShare:
             old = pr.editor_id
             pr.editor_id = f"web:{name}"
             try:
-                pr.set_boxes(img_id, boxes)
+                if confirm or pr.is_annotated(img_id):
+                    pr.set_boxes(img_id, boxes)
+                else:
+                    pr.set_ai_predicted_boxes(img_id, boxes)
             finally:
                 pr.editor_id = old
         self._changed()
-        return {"boxes": [list(b) for b in boxes]}
+        return {"boxes": [list(b) for b in boxes], "annotated": pr.is_annotated(img_id)}
 
     def run_ai(self, img_id):
         if self.predict is None:
@@ -264,9 +297,13 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             if u.path == "/api/state":
                 return self._send(200, o.state(name))
+            if u.path == "/api/sessions":
+                return self._send(200, {"sessions": o.sessions()})
             if u.path == "/api/list":
-                which = (parse_qs(u.query).get("f") or ["todo"])[0]
-                return self._send(200, {"items": o.list_ids("all" if which == "all" else "todo")})
+                q = parse_qs(u.query)
+                which = (q.get("f") or ["todo"])[0]
+                which = which if which in ("todo", "done", "all") else "todo"
+                return self._send(200, {"items": o.list_ids(which, (q.get("s") or [""])[0])})
             m = re.match(r"^/api/(img|boxes)/([^/]+)$", u.path)
             if m:
                 if m.group(1) == "img":
@@ -295,16 +332,15 @@ class _Handler(BaseHTTPRequestHandler):
         if not name:
             return self._err(401, "login")
         try:
-            m = re.match(r"^/api/(boxes|ai)/([^/]+)$", u.path)
+            m = re.match(r"^/api/(boxes|ai|confirm)/([^/]+)$", u.path)
             if m and m.group(1) == "boxes":
                 return self._send(200, o.save_boxes(m.group(2), data.get("boxes"), name))
+            if m and m.group(1) == "confirm":
+                return self._send(200, o.confirm(m.group(2), data.get("boxes"), name))
             if m and m.group(1) == "ai":
                 return self._send(200, o.run_ai(m.group(2)))
             if u.path == "/api/publish":
-                if not o.publish:
-                    return self._err(400, "Publishing isn't set up on the computer.")
-                o.publish()
-                return self._send(200, {"ok": True, "msg": "Publishing on the computer."})
+                return self._err(403, "Publish on the computer (File > Publish to shared folder).")
         except KeyError:
             return self._err(404, "No such image.")
         except (ValueError, TypeError) as e:

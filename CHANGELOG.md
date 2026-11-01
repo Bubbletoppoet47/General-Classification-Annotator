@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.3 - 2026-10-31
+
+- Tablet: Sessions button (annotated / total per session), work inside one session, filter To do / Done / All.
+- Tablet: no Publish (do it on the computer). AI guesses and edits show "?" until Confirm, then "✓".
+
 ## 1.2.2 - 2026-10-31
 
 - File > Dataset location... (was under Manage): link a dataset folder anywhere, nothing copied. Remembered per computer.

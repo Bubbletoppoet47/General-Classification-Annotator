@@ -30,8 +30,8 @@ data. Put the program in a folder you own, for example `C:\GeneralClassification
 
 File > Open in browser (tablet)... starts a small web page on your computer and shows its address, a QR code and a new
 random code. On an iPad or other tablet on the same Wi-Fi, scan the code or open the address and type your name. The pen
-draws and edits boxes; fingers pan and zoom. Undo, Delete, AI, Publish and Confirm are buttons. Everything is saved on the
-computer, and Publish uses the computer's shared folder. The LiDAR view is not in the web page. Use it on your own Wi-Fi
+draws and edits boxes; fingers pan and zoom. Undo, Delete, AI and Confirm are buttons. Sessions lists each session with its annotated count. Edits and AI guesses show "?" until Confirm. Everything is saved on the
+computer; publish from the computer. The LiDAR view is not in the web page. Use it on your own Wi-Fi
 only (the page is not encrypted). Stop sharing closes it.
 
 ## Updating

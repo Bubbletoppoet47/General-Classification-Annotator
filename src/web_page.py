@@ -25,6 +25,11 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
 #info{color:var(--mut);padding:0 6px;white-space:nowrap}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000c;padding:10px 16px;border-radius:10px;display:none}
 .sp{flex:1}
+#panel{position:fixed;inset:0;background:#000a;display:none;padding:24px;overflow:auto;z-index:5}
+#plist{max-width:560px;margin:0 auto;background:var(--bar);border-radius:14px;padding:10px}
+#plist .row{display:flex;justify-content:space-between;gap:12px;padding:14px;border-radius:10px;min-height:48px;align-items:center}
+#plist .row:active,#plist .row.cur{background:#3a4250}
+#plist .n{color:var(--mut);white-space:nowrap}
 </style></head><body>
 <div id="login">
   <h1>Annotator</h1>
@@ -45,16 +50,17 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
     <button id="ai" title="AI boxes">AI</button>
     <button id="fit" title="Fit to screen">Fit</button>
     <span class="sp"></span>
+    <button id="sess" title="Sessions">Sessions</button>
     <button id="filter" title="Show">To do</button>
-    <button id="pub" title="Publish on the computer">Publish</button>
     <button class="ok" id="conf" title="Confirm and go to next">&#10003; Confirm</button>
   </div>
 </div>
+<div id="panel"><div id="plist"></div><div style="text-align:right;margin-top:10px"><button id="pclose">Close</button></div></div>
 <div id="toast"></div>
 <script>
 const $=id=>document.getElementById(id);
 const COLORS=["#ff5d5d","#4ea1ff","#3ecf8e","#ffc94d","#c58bff","#ff8f4d","#4de0e0","#ff7ac8","#a3d95b","#9aa5ff"];
-let S={classes:[],cls:0,items:[],idx:0,filter:"todo",boxes:[],undo:[],sel:-1,img:null,iw:1,ih:1,s:1,ox:0,oy:0,name:"",busy:false};
+let S={classes:[],cls:0,items:[],idx:0,filter:"todo",sess:"",status:0,boxes:[],undo:[],sel:-1,img:null,iw:1,ih:1,s:1,ox:0,oy:0,name:"",busy:false};
 const cv=$("c"),ctx=cv.getContext("2d");
 function toast(t,ms=2200){const e=$("toast");e.textContent=t;e.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display="none",ms)}
 async function api(path,body){
@@ -82,14 +88,15 @@ function buildClasses(){
   S.classes.forEach((n,i)=>{const b=document.createElement("button");b.textContent=n;b.style.background=COLORS[i%COLORS.length]+"55";
     b.className=i===S.cls?"on":"";b.onclick=()=>{S.cls=i;if(S.sel>=0){push();S.boxes[S.sel][0]=i;save()}buildClasses();draw()};el.appendChild(b)})}
 async function loadList(first){
-  const d=await api("/api/list?f="+S.filter);S.items=d.items;
-  if(!S.items.length){S.idx=0;S.img=null;S.boxes=[];$("info").textContent=S.filter==="todo"?"All done!":"No images";draw();return}
+  const d=await api("/api/list?f="+S.filter+"&s="+encodeURIComponent(S.sess));S.items=d.items;
+  if(!S.items.length){S.idx=0;S.img=null;S.boxes=[];$("info").textContent=S.filter==="todo"?"All done!":"No images here";draw();return}
   if(S.idx>=S.items.length)S.idx=S.items.length-1;await openAt(S.idx)}
 async function openAt(i){
   S.idx=i;const id=S.items[i][0];S.sel=-1;S.undo=[];
   const [b,im]=await Promise.all([api("/api/boxes/"+id),loadImg("/api/img/"+id)]);
   S.boxes=b.boxes.map(x=>x.slice());S.img=im;S.iw=im.naturalWidth;S.ih=im.naturalHeight;fit();
-  $("info").textContent=(i+1)+" / "+S.items.length+(b.annotated?"  ✓":(b.ai?"  AI":""));draw()}
+  S.status=b.annotated?2:(b.ai?1:0);setInfo();draw()}
+function setInfo(){const sym=S.status===2?"  \u2713":(S.status===1?"  ?":"");$("info").textContent=(S.idx+1)+" / "+S.items.length+sym}
 function loadImg(u){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(new Error("Image failed"));im.src=u})}
 function resize(){const r=$("cv").getBoundingClientRect(),d=window.devicePixelRatio||1;cv.width=r.width*d;cv.height=r.height*d;S.d=d;S.cw=r.width;S.ch=r.height;draw()}
 function fit(){S.s=S.s0=Math.min(S.cw/S.iw,S.ch/S.ih);S.ox=(S.cw-S.iw*S.s)/2;S.oy=(S.ch-S.ih*S.s)/2}
@@ -103,7 +110,7 @@ function draw(){
   ctx.drawImage(S.img,S.ox,S.oy,S.iw*S.s,S.ih*S.s);
   S.boxes.concat(S.drag&&S.drag.mode==="new"?[S.drag.box]:[]).forEach((b,i)=>{
     const [x,y,w,h]=rect(b),c=COLORS[b[0]%COLORS.length],sel=i===S.sel;
-    ctx.lineWidth=sel?4:2.5;ctx.strokeStyle=c;ctx.strokeRect(x,y,w,h);
+    ctx.lineWidth=sel?4:2.5;ctx.strokeStyle=c;ctx.setLineDash(S.status===1?[8,5]:[]);ctx.strokeRect(x,y,w,h);ctx.setLineDash([]);
     ctx.fillStyle=c+(sel?"40":"22");ctx.fillRect(x,y,w,h);
     ctx.font="600 14px system-ui";ctx.textAlign="left";const t=S.classes[b[0]]||"?";
     const tw=ctx.measureText(t).width+10;ctx.fillStyle=c;ctx.fillRect(x,Math.max(0,y-20),tw,20);ctx.fillStyle="#000";ctx.fillText(t,x+5,Math.max(14,y-5));
@@ -116,8 +123,8 @@ let saveT=null;
 function save(){clearTimeout(saveT);saveT=setTimeout(doSave,150)}
 async function doSave(){
   if(!S.items.length)return;const id=S.items[S.idx][0];
-  try{const d=await api("/api/boxes/"+id,{boxes:S.boxes});S.boxes=d.boxes.map(x=>x.slice());S.items[S.idx][1]=2;
-    $("info").textContent=(S.idx+1)+" / "+S.items.length+"  ✓";draw()}catch(e){toast(e.message)}}
+  try{const d=await api("/api/boxes/"+id,{boxes:S.boxes});S.boxes=d.boxes.map(x=>x.slice());S.status=d.annotated?2:1;S.items[S.idx][1]=S.status;
+    setInfo();draw()}catch(e){toast(e.message)}}
 // ---- pointers: pen (or mouse) draws and edits; touch pans and zooms; never both at once
 const P=new Map();let penDown=false,pinch=null;
 cv.addEventListener("pointerdown",e=>{
@@ -178,14 +185,26 @@ $("del").onclick=()=>{if(S.sel<0)return toast("Tap a box first");push();S.boxes.
 $("fit").onclick=()=>{fit();draw()};
 $("ai").onclick=async()=>{
   if(!S.items.length)return;$("ai").disabled=true;toast("AI is working...",8000);
-  try{const d=await api("/api/ai/"+S.items[S.idx][0],{});if(!d.ai){toast("Already confirmed, so AI was skipped.",3000)}else{push();S.boxes=d.boxes.map(x=>x.slice());S.sel=-1;toast(d.boxes.length+" box(es)")}draw()}
+  try{const d=await api("/api/ai/"+S.items[S.idx][0],{});if(!d.ai){toast("Already confirmed, so AI was skipped.",3000)}else{push();S.boxes=d.boxes.map(x=>x.slice());S.sel=-1;S.status=1;S.items[S.idx][1]=1;setInfo();toast(d.boxes.length+" box(es). Check them, then Confirm.",3500)}draw()}
   catch(e){toast(e.message,4000)}$("ai").disabled=false};
-$("filter").onclick=async()=>{S.filter=S.filter==="todo"?"all":"todo";$("filter").textContent=S.filter==="todo"?"To do":"All";S.idx=0;await loadList()};
-$("pub").onclick=async()=>{try{const d=await api("/api/publish",{});toast(d.msg,3000)}catch(e){toast(e.message,4000)}};
+const FL={todo:"To do",done:"Done \u2713",all:"All"};
+$("filter").onclick=async()=>{S.filter=S.filter==="todo"?"done":(S.filter==="done"?"all":"todo");$("filter").textContent=FL[S.filter];S.idx=0;await loadList()};
+function sname(id){return id===""?"All sessions":(id==="~"?"Single images":id)}
+function setSessLabel(){const t=S.sess===""?"Sessions":sname(S.sess);$("sess").textContent=t.length>16?t.slice(0,15)+"\u2026":t}
+$("sess").onclick=async()=>{
+  try{const d=await api("/api/sessions"),el=$("plist");el.innerHTML="";
+    d.sessions.forEach(r=>{const row=document.createElement("div");row.className="row"+(r.id===S.sess?" cur":"");
+      const a=document.createElement("span");a.textContent=sname(r.id);const n=document.createElement("span");n.className="n";
+      n.textContent=r.annotated+" / "+r.total+" \u2713"+(r.draft?"   "+r.draft+" ?":"");row.append(a,n);
+      row.onclick=async()=>{S.sess=r.id;S.idx=0;$("panel").style.display="none";setSessLabel();await loadList()};el.appendChild(row)});
+    $("panel").style.display="block"}catch(e){toast(e.message)}};
+$("pclose").onclick=()=>$("panel").style.display="none";
 $("conf").onclick=async()=>{
-  if(!S.items.length)return;clearTimeout(saveT);await doSave();
+  if(!S.items.length)return;clearTimeout(saveT);
+  try{const d=await api("/api/confirm/"+S.items[S.idx][0],{boxes:S.boxes});S.boxes=d.boxes.map(x=>x.slice());S.status=2;S.items[S.idx][1]=2;setInfo();draw()}
+  catch(e){return toast(e.message)}
   if(S.filter==="todo"){S.items.splice(S.idx,1);if(!S.items.length)return loadList();if(S.idx>=S.items.length)S.idx=S.items.length-1;await openAt(S.idx)}
-  else await step(1)};
+  else if(S.idx<S.items.length-1)await openAt(S.idx+1);else toast("That was the last one")};
 new ResizeObserver(()=>{resize();if(S.img){fit();draw()}}).observe($("cv"));
 api("/api/state").then(()=>start()).catch(()=>{});
 </script></body></html>

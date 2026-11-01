@@ -5,6 +5,12 @@ To update: use File > Check for updates in the annotator (after the first time),
 IMPORTANT: copy these files INTO your existing annotator folder and choose "replace files".
 Never replace the whole folder - your project (GimbleDataset) lives there.
 
+2026-10-31 - sessions and confirm on the tablet (version 1.2.3)
+- Tablet: a Sessions button lists every session with how many images are annotated. Pick one to work only in it. Inside it,
+  the filter cycles To do, Done and All.
+- Tablet: Publish is gone. Publish from the computer (File > Publish to shared folder). Confirm stays on the tablet.
+- Tablet: AI guesses and edits show "?" until you press Confirm, then "✓". Images you already confirmed stay confirmed.
+
 2026-10-31 - your dataset lives wherever you link it (version 1.2.2)
 - New: File > Dataset location... links a dataset folder anywhere. Nothing is copied or moved. It is remembered on this
   computer, so you can delete or replace the program folder without touching your data.
