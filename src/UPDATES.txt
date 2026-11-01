@@ -5,6 +5,11 @@ To update: use File > Check for updates in the annotator (after the first time),
 IMPORTANT: copy these files INTO your existing annotator folder and choose "replace files".
 Never replace the whole folder - your project (GimbleDataset) lives there.
 
+2026-10-31 - fixes AI pre-labeling in the Windows program (version 1.2.1)
+- Fixed "Prediction failed: operator torchvision::nms does not exist". The AI libraries are now installed and packed
+  together correctly, and the build checks the AI for real before a release is made.
+- This one needs the full zip once (the libraries changed); after that updates are small again.
+
 2026-10-31 - small automatic updates (version 1.2.0)
 - File > Check for updates now installs the update itself and restarts: it downloads only the program's code
   (about 1 MB, not the 283 MB zip). If a new version can't start, the previous one is put back automatically.

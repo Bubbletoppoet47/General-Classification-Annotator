@@ -41,7 +41,7 @@ jobs:
         with: { python-version: "3.12" }
       - name: Install CPU PyTorch, then the rest
         run: |
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install -r src/requirements.txt -r requirements-build.txt
       - run: pyinstaller packaging/annotator.spec --noconfirm
       - name: Put the program's code beside the .exe and make the small-update files
@@ -51,7 +51,11 @@ jobs:
         run: |
           $p = Start-Process dist/GeneralClassificationAnnotator/GeneralClassificationAnnotator.exe -ArgumentList "--selftest","selftest.txt","--expect-ai" -Wait -PassThru
           if (Test-Path selftest.txt) { Get-Content selftest.txt } else { Write-Host "no selftest output" }
-          if ($p.ExitCode -ne 0) { throw "selftest failed (exit $($p.ExitCode))" }
+          if ($p.ExitCode -ne 0) {
+            $t = if (Test-Path selftest.txt) { (Get-Content selftest.txt) -join " | " } else { "no output" }
+            Write-Host "::error::selftest failed (exit $($p.ExitCode)): $t"
+            throw "selftest failed"
+          }
       - name: Zip the folder (GitHub allows 2000 MB per release file)
         shell: pwsh
         run: |

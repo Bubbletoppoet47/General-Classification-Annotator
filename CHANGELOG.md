@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 - 2026-10-31
+
+- Fix: "operator torchvision::nms does not exist" when predicting in the Windows program (torchvision installed from
+  the same CPU build as torch and its compiled part packed; the self-test now runs the NMS operator).
+
 ## 1.2.0 - 2026-10-31
 
 - Small automatic updates for the Windows program: the program's code is now plain `.py` files in an `app` folder beside a

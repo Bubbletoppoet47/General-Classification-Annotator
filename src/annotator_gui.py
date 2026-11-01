@@ -3139,6 +3139,17 @@ def selftest(argv):
         except Exception as e:  # noqa: BLE001
             ai_ok = False
             lines.append(f"import {mod}: not available ({type(e).__name__}: {e})")
+    if ai_ok:
+        try:                                            # the AI really needs this operator (it is what "operator torchvision::nms does not exist" is about)
+            import torch
+            import torchvision
+            keep = torchvision.ops.nms(torch.tensor([[0., 0., 10., 10.], [1., 1., 11., 11.], [50., 50., 60., 60.]]),
+                                       torch.tensor([0.9, 0.8, 0.7]), 0.5)
+            assert keep.tolist() == [0, 2], keep
+            lines.append("torchvision nms: ok")
+        except Exception as e:  # noqa: BLE001
+            ai_ok = False
+            lines.append(f"torchvision nms: FAILED ({type(e).__name__}: {e})")
     if expect_ai and not ai_ok:
         ok = False
         lines.append("FAIL: --expect-ai was given but the AI packages did not import")

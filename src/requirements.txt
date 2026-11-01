@@ -13,4 +13,5 @@ qrcode>=7.4               # optional: the QR code in File > Open in browser (the
 torch>=2.2                # plain "pip install" gives the CPU build on Windows, which is fine for annotating.
                           # For an NVIDIA GPU, install torch first from https://pytorch.org/get-started/locally/
                           # (pick your CUDA version), then run this file.
+torchvision>=0.17          # must match torch (install both together)
 ultralytics>=8.4.0        # needs a recent version for the YOLO26 models

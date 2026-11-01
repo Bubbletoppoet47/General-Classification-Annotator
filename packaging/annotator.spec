@@ -20,12 +20,16 @@ try:
     ul_datas, ul_bins, ul_hidden = collect_all("ultralytics")
 except Exception:                      # building the launcher without the AI packages (tests only)
     ul_datas, ul_bins, ul_hidden = [], [], []
+try:                                   # torchvision's compiled part (the NMS operator) must come along
+    tv_datas, tv_bins, tv_hidden = collect_all("torchvision")
+except Exception:
+    tv_datas, tv_bins, tv_hidden = [], [], []
 a = Analysis(
     [os.path.join(SPECPATH, "launcher.py")],
     pathex=[SRC],
-    binaries=ul_bins,
-    datas=collect_data_files("sv_ttk") + ul_datas,
-    hiddenimports=ul_hidden + OURS + ["qrcode", "PIL.ImageTk", "tkinter", "tkinter.ttk", "tkinter.filedialog",
+    binaries=ul_bins + tv_bins,
+    datas=collect_data_files("sv_ttk") + ul_datas + tv_datas,
+    hiddenimports=ul_hidden + tv_hidden + OURS + ["qrcode", "PIL.ImageTk", "tkinter", "tkinter.ttk", "tkinter.filedialog",
                                       "tkinter.messagebox", "tkinter.simpledialog"],
     excludes=["IPython", "pytest", "tensorboard"],
 )
