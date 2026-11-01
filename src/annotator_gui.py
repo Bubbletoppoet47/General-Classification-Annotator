@@ -377,6 +377,7 @@ class AnnotatorApp:
         file_m.add_command(label="Publish to shared folder", command=self.publish_to_shared)
         file_m.add_command(label="Import data to edit...", command=self.import_to_edit)
         file_m.add_command(label="Shared folder location...", command=self.choose_shared_dir)
+        file_m.add_command(label="Dataset location...", command=self.choose_dataset)
         file_m.add_command(label="Models folder location...", command=self.choose_models_dir)
         file_m.add_command(label="Download models from GitHub...", command=self.download_models)
         file_m.add_command(label="Open in browser (tablet)...", command=self.open_in_browser)
@@ -397,8 +398,6 @@ class AnnotatorApp:
         manage_m = Menu(bar, tearoff=0)
         manage_m.add_command(label="Sessions...", command=self.manage_sessions)
         manage_m.add_command(label="Sync Deleted Files", command=self.sync_deleted_files)
-        manage_m.add_separator()
-        manage_m.add_command(label="Dataset location...", command=self.choose_dataset)
         bar.add_cascade(label="File", menu=file_m)
         bar.add_cascade(label="Edit", menu=edit_m)
         bar.add_cascade(label="Manage", menu=manage_m)
@@ -551,28 +550,26 @@ class AnnotatorApp:
         self._relaunch(self.project.root)
 
     def choose_dataset(self):
-        """Manage > Dataset location: open a different project folder (e.g. one that was renamed or moved).
-        Remembered for this copy of the program; the annotator then reopens on it."""
+        """File > Dataset location: link a dataset folder anywhere (nothing is copied or moved). Remembered on this
+        computer for every copy of the program; the annotator then reopens on it."""
         if self._bg_blocked():
             return
-        d = filedialog.askdirectory(title="Pick your dataset folder (the one with manifest.json and images inside)",
+        d = filedialog.askdirectory(title="Pick your dataset folder (the one with manifest.json inside)",
                                     initialdir=os.path.dirname(self.project.root))
         if not d:
             return
         d = os.path.normpath(d)
         if _same(d, self.project.root):
-            messagebox.showinfo("Dataset location", "That is the dataset already open.")
+            messagebox.showinfo("Dataset location", "That dataset is already open.")
             return
         if not os.path.exists(os.path.join(d, "manifest.json")):
-            if not messagebox.askyesno("Dataset location",
-                                       f"No dataset in:\n{d}\nStart a new empty one there?"):
+            if not messagebox.askyesno("Dataset location", f"No dataset in:\n{d}\nStart a new empty one there?"):
                 return
-        if not messagebox.askyesno("Dataset location",
-                                   f"Open this dataset?\n{d}\nThe annotator will reopen on it."):
+        if not messagebox.askyesno("Dataset location", f"Open this dataset?\n{d}\nThe annotator will reopen on it."):
             return
         os.makedirs(d, exist_ok=True)
-        key = os.path.normcase(os.path.abspath(self.APP_DIR))
-        self.cfg.setdefault('projects', {})[key] = d
+        self.cfg['dataset_dir'] = d
+        (self.cfg.get('projects') or {}).pop(os.path.normcase(os.path.abspath(self.APP_DIR)), None)
         self._save_cfg()
         self._relaunch(d)
 
@@ -3080,13 +3077,16 @@ def _same(a, b):
 
 
 def pick_project(argv, cfg, here):
-    """Which project folder to open -> (path, note). Order: a folder given on the command line; the one remembered
-    FOR THIS COPY of the program (so a second copy in another folder starts fresh instead of borrowing the first
-    one's data); otherwise ./Dataset next to the program, made on first use. An older ./GimbleDataset is renamed
-    to Dataset (everything inside stays)."""
+    """Which dataset folder to open -> (path, note); path None = none linked yet (the caller asks).
+    Order: a folder given on the command line; the dataset linked on this computer (File > Dataset location);
+    one an older version remembered for this copy of the program; a ./Dataset (or older ./GimbleDataset, renamed)
+    that already sits next to the program. Nothing is ever created next to the program."""
     new, old = os.path.join(here, "Dataset"), os.path.join(here, "GimbleDataset")
     if len(argv) > 1:
         return argv[1], None
+    linked = cfg.get('dataset_dir')
+    if linked and os.path.isdir(linked):
+        return linked, None
     mem = (cfg.get('projects') or {}).get(os.path.normcase(os.path.abspath(here)))
     if mem and os.path.isdir(mem):
         return mem, None
@@ -3098,7 +3098,42 @@ def pick_project(argv, cfg, here):
             return new, ("Your project folder 'GimbleDataset' was renamed to 'Dataset'. Nothing inside it changed.")
         except OSError:
             return old, None                                  # in use / not allowed: keep working in the old name
-    return new, None                                          # first time: a new empty project is made here
+    return None, None
+
+
+def ask_dataset_location(root, cfg=None):
+    """First start with no dataset linked: link an existing folder or make a new empty one. Returns the folder or None
+    (None = quit). Nothing is copied."""
+    out = {'path': None}
+    win = Toplevel(root)
+    win.title("Link your dataset")
+    win.resizable(False, False)
+    ttk.Label(win, text="Where is your dataset? It stays where it is; the program just links to it.",
+              wraplength=380, justify=LEFT).pack(padx=16, pady=(16, 10), anchor="w")
+
+    def existing():
+        d = filedialog.askdirectory(title="Pick your dataset folder (the one with manifest.json inside)", parent=win)
+        if not d:
+            return
+        d = os.path.normpath(d)
+        if not os.path.exists(os.path.join(d, "manifest.json")) and not messagebox.askyesno(
+                "Link your dataset", f"No dataset in:\n{d}\nStart a new empty one there?", parent=win):
+            return
+        out['path'] = d
+        win.destroy()
+
+    def new():
+        d = filedialog.askdirectory(title="Pick or make a folder for the new dataset", parent=win)
+        if d:
+            out['path'] = os.path.normpath(d)
+            win.destroy()
+    ttk.Button(win, text="Link an existing dataset folder...", command=existing).pack(fill=X, padx=16, pady=3)
+    ttk.Button(win, text="Make a new, empty dataset...", command=new).pack(fill=X, padx=16, pady=3)
+    ttk.Button(win, text="Quit", command=win.destroy).pack(fill=X, padx=16, pady=(3, 16))
+    win.protocol("WM_DELETE_WINDOW", win.destroy)
+    win.grab_set()
+    root.wait_window(win)
+    return out['path']
 
 
 def selftest(argv):
@@ -3181,9 +3216,17 @@ def main():
     cfg = sz.load_config()
     here = au.app_dir(__file__)
     project_root, note = pick_project(sys.argv, cfg, here)
+    if project_root is None:
+        root.withdraw()
+        project_root = ask_dataset_location(root, cfg)
+        if not project_root:
+            root.destroy()
+            return
+        root.deiconify()
     os.makedirs(project_root, exist_ok=True)
     cfg.pop('project_dir', None)                              # (older versions remembered one folder for every copy)
-    cfg.setdefault('projects', {})[os.path.normcase(os.path.abspath(here))] = os.path.normpath(project_root)
+    if len(sys.argv) <= 1:
+        cfg['dataset_dir'] = os.path.normpath(project_root)    # linked on this computer, whichever copy of the program runs
     try:
         sz.save_config(cfg)
     except OSError:

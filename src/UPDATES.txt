@@ -5,6 +5,12 @@ To update: use File > Check for updates in the annotator (after the first time),
 IMPORTANT: copy these files INTO your existing annotator folder and choose "replace files".
 Never replace the whole folder - your project (GimbleDataset) lives there.
 
+2026-10-31 - your dataset lives wherever you link it (version 1.2.2)
+- New: File > Dataset location... links a dataset folder anywhere. Nothing is copied or moved. It is remembered on this
+  computer, so you can delete or replace the program folder without touching your data.
+- On the first start with no dataset linked, the program asks you to link an existing folder or make a new one. It no
+  longer creates a Dataset folder next to itself. A Dataset that already sits beside the program keeps working.
+
 2026-10-31 - fixes AI pre-labeling in the Windows program (version 1.2.1)
 - Fixed "Prediction failed: operator torchvision::nms does not exist". The AI libraries are now installed and packed
   together correctly, and the build checks the AI for real before a release is made.

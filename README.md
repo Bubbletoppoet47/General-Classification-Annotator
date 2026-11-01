@@ -22,8 +22,9 @@ GitHub**. They are small, a few MB each.
 The first time you run it, Windows may show a blue "Windows protected your PC" box, because the program is not
 code-signed. Choose **More info**, then **Run anyway**.
 
-Your project (the `Dataset` folder) is created next to the program the first time it runs. Put the program in a folder
-you own, for example `C:\Annotator`, not in Program Files.
+The first time it runs it asks where your dataset is: link an existing folder or make a new one. The dataset stays where
+you put it (File > Dataset location... changes it), so you can delete or replace the program folder without touching your
+data. Put the program in a folder you own, for example `C:\GeneralClassificationAnnotator`, not in Program Files.
 
 ## Annotate from a tablet
 

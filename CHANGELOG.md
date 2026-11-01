@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.2 - 2026-10-31
+
+- File > Dataset location... (was under Manage): link a dataset folder anywhere, nothing copied. Remembered per computer.
+- First start asks you to link or make a dataset instead of creating `Dataset` next to the program.
+
 ## 1.2.1 - 2026-10-31
 
 - Fix: "operator torchvision::nms does not exist" when predicting in the Windows program (torchvision installed from
