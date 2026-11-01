@@ -66,13 +66,17 @@ with sync_playwright() as pw:
     # AI draft: "?" (not a check mark) until Confirm; then Confirm and Next
     pg.click("#ai"); pg.wait_for_function("S.boxes.length === 1 && S.status === 1")
     assert P.is_ai_pending(ids[1]) and not P.is_annotated(ids[1]) and "?" in pg.inner_text("#info") and "\u2713" not in pg.inner_text("#info")
-    pg.click("#conf"); pg.wait_for_function("S.items.length === 0"); pg.wait_for_timeout(300)
+    assert pg.evaluate("S.boxes.every(b => b[5] === 1)")                                  # AI boxes are dashed
+    pg.mouse.move(cx - 60, cy - 60); pg.mouse.down(); pg.mouse.move(cx - 20, cy - 20, steps=5); pg.mouse.up()   # my own box is solid at once
+    pg.wait_for_function("S.boxes.length === 2 && !S.boxes[1][5]")
+    pg.click("#conf"); pg.wait_for_function("S.boxes.every(b => !b[5])"); pg.wait_for_timeout(300)  # 1st Confirm: AI boxes turn solid, stay here
+    assert not P.is_annotated(ids[1]) and "?" in pg.inner_text("#info") and pg.evaluate("S.items.length") == 1
+    pg.click("#conf"); pg.wait_for_function("S.items.length === 0"); pg.wait_for_timeout(300)     # 2nd Confirm: the whole image, then on
     assert P.is_annotated(ids[1]) and not P.is_ai_pending(ids[1]) and "All done" in pg.inner_text("#info")
-    # filters inside the session: Done shows both, All shows both; AI on a confirmed image is skipped
-    pg.click("#filter"); pg.wait_for_function("S.filter === 'done' && S.items.length === 2")
-    assert pg.inner_text("#filter").startswith("Done") and "\u2713" in pg.inner_text("#info")
+    # "Show annotated" brings the finished ones back so they can be re-edited
+    pg.check("#annchk"); pg.wait_for_function("S.filter === 'all' && S.items.length === 2")
+    assert "\u2713" in pg.inner_text("#info")
     pg.click("#ai"); pg.wait_for_function("document.getElementById('toast').textContent.includes('skipped')")
-    pg.click("#filter"); pg.wait_for_function("S.filter === 'all' && S.items.length === 2")
     pg.click("#sess"); pg.wait_for_selector("#panel", state="visible")
     rows = pg.locator("#plist .row").all_inner_texts(); assert "2 / 2" in rows[1] and "2 / 3" in rows[0], rows
     br.close()

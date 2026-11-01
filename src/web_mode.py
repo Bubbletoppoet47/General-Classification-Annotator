@@ -46,18 +46,23 @@ def lan_ip():
 
 
 def clean_boxes(raw, n_classes):
-    """Validates boxes from the page: [[cls, xc, yc, w, h], ...] -> [(cls, xc, yc, w, h)] clipped to the image.
+    """Validates boxes from the page: [[cls, xc, yc, w, h(, dashed)], ...] -> [(cls, xc, yc, w, h)] clipped to the image.
     Raises ValueError on anything odd."""
+    return clean_boxes_d(raw, n_classes)[0]
+
+
+def clean_boxes_d(raw, n_classes):
+    """Like clean_boxes, but returns (boxes, dashed) where dashed[i] is 1 for an AI box not yet accepted."""
     if not isinstance(raw, list) or len(raw) > MAX_BOXES:
         raise ValueError("bad boxes")
-    out = []
+    out, dash = [], []
     for b in raw:
-        if not isinstance(b, (list, tuple)) or len(b) != 5:
+        if not isinstance(b, (list, tuple)) or len(b) not in (5, 6):
             raise ValueError("bad box")
         c = int(b[0])
         if not 0 <= c < n_classes:
             raise ValueError("unknown class")
-        xc, yc, w, h = (float(v) for v in b[1:])
+        xc, yc, w, h = (float(v) for v in b[1:5])
         if any(v != v or abs(v) > 10 for v in (xc, yc, w, h)):
             raise ValueError("bad numbers")
         x1, x2 = max(0.0, xc - w / 2), min(1.0, xc + w / 2)
@@ -65,7 +70,8 @@ def clean_boxes(raw, n_classes):
         if x2 - x1 < 0.002 or y2 - y1 < 0.002:
             continue                                   # a tap, not a box
         out.append((c, (x1 + x2) / 2, (y1 + y2) / 2, x2 - x1, y2 - y1))
-    return out
+        dash.append(1 if len(b) == 6 and b[5] else 0)
+    return out, dash
 
 
 class WebShare:
@@ -183,35 +189,62 @@ class WebShare:
             raise KeyError(img_id)
         return img_id
 
+    def _dash(self, img_id, n):
+        """Which boxes of an unconfirmed AI draft are still dashed (AI guesses nobody accepted yet)."""
+        info = self.project.manifest["images"][img_id]
+        d = info.get("web_dash")
+        if info.get("annotated") or not info.get("ai_pending") or not isinstance(d, list) or len(d) != n:
+            return [0] * n
+        return [1 if x else 0 for x in d]
+
+    def _set_dash(self, img_id, dash):
+        info = self.project.manifest["images"][img_id]
+        if any(dash) and not info.get("annotated"):
+            info["web_dash"] = list(dash)
+        else:
+            info.pop("web_dash", None)
+        self.project.save_manifest()
+
+    def _out(self, img_id, boxes):
+        dash = self._dash(img_id, len(boxes))
+        return {"boxes": [list(b) + [d] for b, d in zip(boxes, dash)], "annotated": self.project.is_annotated(img_id),
+                "ai": self.project.is_ai_pending(img_id)}
+
     def boxes(self, img_id):
-        pr = self.project
         self._known(img_id)
-        return {"boxes": [list(b) for b in pr.get_boxes(img_id)], "annotated": pr.is_annotated(img_id),
-                "ai": pr.is_ai_pending(img_id)}
+        return self._out(img_id, self.project.get_boxes(img_id))
 
     def save_boxes(self, img_id, raw, name):
         """An edit. A confirmed image stays confirmed; anything else is saved as an unconfirmed draft ('?')."""
         return self._store(img_id, raw, name, confirm=False)
 
     def confirm(self, img_id, raw, name):
+        """First press on an image that still has dashed AI boxes: they turn solid and the image stays a draft.
+        Otherwise the whole image is confirmed (result 'annotated': True)."""
         return self._store(img_id, raw, name, confirm=True)
 
     def _store(self, img_id, raw, name, confirm):
         pr = self.project
         self._known(img_id)
-        boxes = clean_boxes(raw, len(pr.classes))
+        boxes, dash = clean_boxes_d(raw, len(pr.classes))
         with self.lock:
             old = pr.editor_id
             pr.editor_id = f"web:{name}"
             try:
-                if confirm or pr.is_annotated(img_id):
+                if pr.is_annotated(img_id):
+                    pr.set_boxes(img_id, boxes)
+                    dash = [0] * len(boxes)
+                elif confirm and not any(dash):
                     pr.set_boxes(img_id, boxes)
                 else:
+                    if confirm:
+                        dash = [0] * len(boxes)          # accept the AI's boxes; the image is not finished yet
                     pr.set_ai_predicted_boxes(img_id, boxes)
+                self._set_dash(img_id, dash)
             finally:
                 pr.editor_id = old
         self._changed()
-        return {"boxes": [list(b) for b in boxes], "annotated": pr.is_annotated(img_id)}
+        return self._out(img_id, boxes)
 
     def run_ai(self, img_id):
         if self.predict is None:
@@ -219,12 +252,13 @@ class WebShare:
         pr = self.project
         self._known(img_id)
         if pr.is_annotated(img_id):
-            return {"boxes": [list(b) for b in pr.get_boxes(img_id)], "ai": False}
+            return dict(self._out(img_id, pr.get_boxes(img_id)), ai=False)
         boxes = [tuple(b) for b in (self.predict(img_id) or [])]
         with self.lock:
             pr.set_ai_predicted_boxes(img_id, boxes)
+            self._set_dash(img_id, [1] * len(boxes))
         self._changed()
-        return {"boxes": [list(b) for b in boxes], "ai": True}
+        return dict(self._out(img_id, boxes), ai=True)
 
     def image_bytes(self, img_id):
         from PIL import Image

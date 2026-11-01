@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.4 - 2026-10-31
+
+- Tablet: Confirm is two steps for AI images (dashed boxes turn solid, then Confirm again finishes the image).
+- Tablet: "Show annotated" checkbox replaces the To do / Done / All button.
+
 ## 1.2.3 - 2026-10-31
 
 - Tablet: Sessions button (annotated / total per session), work inside one session, filter To do / Done / All.

@@ -5,6 +5,11 @@ To update: use File > Check for updates in the annotator (after the first time),
 IMPORTANT: copy these files INTO your existing annotator folder and choose "replace files".
 Never replace the whole folder - your project (GimbleDataset) lives there.
 
+2026-10-31 - two-step Confirm and Show annotated on the tablet (version 1.2.4)
+- Tablet: AI boxes are dashed. The first Confirm turns them solid (the image stays on "?"). Confirm again and the whole
+  image is annotated ("✓") and the next one opens. Boxes you draw yourself are solid right away.
+- Tablet: a "Show annotated" checkbox next to Sessions brings back finished images so you can re-edit them.
+
 2026-10-31 - sessions and confirm on the tablet (version 1.2.3)
 - Tablet: a Sessions button lists every session with how many images are annotated. Pick one to work only in it. Inside it,
   the filter cycles To do, Done and All.

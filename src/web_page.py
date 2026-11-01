@@ -13,6 +13,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:16px sy
 #login h1{font-size:22px;margin:0 0 4px}
 input{font:inherit;padding:12px;border-radius:10px;border:1px solid #3a404c;background:#0f1115;color:var(--fg);-webkit-user-select:text;user-select:text}
 button{font:inherit;color:var(--fg);background:#2d333e;border:0;border-radius:10px;padding:10px 14px;min-height:44px;min-width:44px}
+#showann{display:flex;align-items:center;gap:6px;min-height:44px;padding:0 6px;white-space:nowrap}#showann input{width:22px;height:22px}
 button:active{background:#3a4250}button.p{background:var(--acc);color:#fff}button.ok{background:var(--ok);color:#06241a}
 button:disabled{opacity:.4}
 #err{color:var(--bad);min-height:1.2em}
@@ -51,7 +52,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
     <button id="fit" title="Fit to screen">Fit</button>
     <span class="sp"></span>
     <button id="sess" title="Sessions">Sessions</button>
-    <button id="filter" title="Show">To do</button>
+    <label id="showann" title="Show annotated images too"><input type="checkbox" id="annchk"> Show annotated</label>
     <button class="ok" id="conf" title="Confirm and go to next">&#10003; Confirm</button>
   </div>
 </div>
@@ -110,7 +111,7 @@ function draw(){
   ctx.drawImage(S.img,S.ox,S.oy,S.iw*S.s,S.ih*S.s);
   S.boxes.concat(S.drag&&S.drag.mode==="new"?[S.drag.box]:[]).forEach((b,i)=>{
     const [x,y,w,h]=rect(b),c=COLORS[b[0]%COLORS.length],sel=i===S.sel;
-    ctx.lineWidth=sel?4:2.5;ctx.strokeStyle=c;ctx.setLineDash(S.status===1?[8,5]:[]);ctx.strokeRect(x,y,w,h);ctx.setLineDash([]);
+    ctx.lineWidth=sel?4:2.5;ctx.strokeStyle=c;ctx.setLineDash(b[5]?[8,5]:[]);ctx.strokeRect(x,y,w,h);ctx.setLineDash([]);
     ctx.fillStyle=c+(sel?"40":"22");ctx.fillRect(x,y,w,h);
     ctx.font="600 14px system-ui";ctx.textAlign="left";const t=S.classes[b[0]]||"?";
     const tw=ctx.measureText(t).width+10;ctx.fillStyle=c;ctx.fillRect(x,Math.max(0,y-20),tw,20);ctx.fillStyle="#000";ctx.fillText(t,x+5,Math.max(14,y-5));
@@ -185,10 +186,9 @@ $("del").onclick=()=>{if(S.sel<0)return toast("Tap a box first");push();S.boxes.
 $("fit").onclick=()=>{fit();draw()};
 $("ai").onclick=async()=>{
   if(!S.items.length)return;$("ai").disabled=true;toast("AI is working...",8000);
-  try{const d=await api("/api/ai/"+S.items[S.idx][0],{});if(!d.ai){toast("Already confirmed, so AI was skipped.",3000)}else{push();S.boxes=d.boxes.map(x=>x.slice());S.sel=-1;S.status=1;S.items[S.idx][1]=1;setInfo();toast(d.boxes.length+" box(es). Check them, then Confirm.",3500)}draw()}
+  try{const d=await api("/api/ai/"+S.items[S.idx][0],{});if(!d.ai){toast("Already confirmed, so AI was skipped.",3000)}else{push();S.boxes=d.boxes.map(x=>x.slice());S.sel=-1;S.status=1;S.items[S.idx][1]=1;setInfo();toast(d.boxes.length+" box(es). Confirm accepts them, Confirm again finishes.",4000)}draw()}
   catch(e){toast(e.message,4000)}$("ai").disabled=false};
-const FL={todo:"To do",done:"Done \u2713",all:"All"};
-$("filter").onclick=async()=>{S.filter=S.filter==="todo"?"done":(S.filter==="done"?"all":"todo");$("filter").textContent=FL[S.filter];S.idx=0;await loadList()};
+$("annchk").onchange=async()=>{S.filter=$("annchk").checked?"all":"todo";S.idx=0;await loadList()};
 function sname(id){return id===""?"All sessions":(id==="~"?"Single images":id)}
 function setSessLabel(){const t=S.sess===""?"Sessions":sname(S.sess);$("sess").textContent=t.length>16?t.slice(0,15)+"\u2026":t}
 $("sess").onclick=async()=>{
@@ -201,7 +201,9 @@ $("sess").onclick=async()=>{
 $("pclose").onclick=()=>$("panel").style.display="none";
 $("conf").onclick=async()=>{
   if(!S.items.length)return;clearTimeout(saveT);
-  try{const d=await api("/api/confirm/"+S.items[S.idx][0],{boxes:S.boxes});S.boxes=d.boxes.map(x=>x.slice());S.status=2;S.items[S.idx][1]=2;setInfo();draw()}
+  try{const d=await api("/api/confirm/"+S.items[S.idx][0],{boxes:S.boxes});S.boxes=d.boxes.map(x=>x.slice());S.sel=-1;
+    S.status=d.annotated?2:1;S.items[S.idx][1]=S.status;setInfo();draw();
+    if(!d.annotated){toast("AI boxes accepted. Confirm again to finish.",2500);return}}
   catch(e){return toast(e.message)}
   if(S.filter==="todo"){S.items.splice(S.idx,1);if(!S.items.length)return loadList();if(S.idx>=S.items.length)S.idx=S.items.length-1;await openAt(S.idx)}
   else if(S.idx<S.items.length-1)await openAt(S.idx+1);else toast("That was the last one")};

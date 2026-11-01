@@ -81,6 +81,19 @@ assert req("/api/boxes/nope", {"boxes": []}, ck)[0] == 404
 # AI: makes an unreviewed draft, never touches a confirmed image
 c, b, _ = req(f"/api/ai/{ids[1]}", {}, ck); d = json.loads(b)
 assert c == 200 and len(d["boxes"]) == 2 and d["ai"] and P.is_ai_pending(ids[1]) and not P.is_annotated(ids[1])
+assert all(x[5] == 1 for x in d["boxes"])                                                       # AI boxes come back dashed
+g = json.loads(req("/api/boxes/" + ids[1], cookie=ck)[1]); assert [x[5] for x in g["boxes"]] == [1, 1]
+# the user adds a solid box of their own and fixes one AI box; the dashes stay where they were
+mine = [g["boxes"][0], g["boxes"][1], [1, 0.2, 0.2, 0.1, 0.1, 0]]
+g = json.loads(req(f"/api/boxes/{ids[1]}", {"boxes": mine}, ck)[1]); assert [x[5] for x in g["boxes"]] == [1, 1, 0] and not g["annotated"]
+# first Confirm: the AI boxes turn solid and the image is NOT finished; it stays a draft
+g = json.loads(req(f"/api/confirm/{ids[1]}", {"boxes": g["boxes"]}, ck)[1])
+assert g["annotated"] is False and [x[5] for x in g["boxes"]] == [0, 0, 0] and not P.is_annotated(ids[1]) and P.is_ai_pending(ids[1])
+assert [x[5] for x in json.loads(req("/api/boxes/" + ids[1], cookie=ck)[1])["boxes"]] == [0, 0, 0]       # and it is remembered
+# second Confirm: nothing is dashed any more, so the whole image is confirmed
+g = json.loads(req(f"/api/confirm/{ids[1]}", {"boxes": g["boxes"]}, ck)[1])
+assert g["annotated"] is True and P.is_annotated(ids[1]) and not P.is_ai_pending(ids[1]) and "web_dash" not in P.manifest["images"][ids[1]]
+P.set_boxes(ids[1], [])                                                                          # (put it back for the checks below)
 c, b, _ = req(f"/api/ai/{ids[0]}", {}, ck); assert json.loads(b)["ai"] is False and len(json.loads(b)["boxes"]) == 1
 w.predict = None
 c, b, _ = req(f"/api/ai/{ids[2]}", {}, ck); assert c == 409 and b"AI model" in b
